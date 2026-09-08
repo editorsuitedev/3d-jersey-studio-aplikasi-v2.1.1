@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, createContext, useContext } from 'react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, RefreshCw, CheckCircle } from 'lucide-react';
+
+interface AuthContextType {
+  login: (email: string, pass: string) => Promise<{ success: boolean; requiresVerification?: boolean; email?: string; error?: string }>;
+  loginWithGoogle: (token: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  login: async () => ({ success: false }),
+  loginWithGoogle: async () => ({ success: false }),
+});
+
+export const useAuth = () => useContext(AuthContext);
 
 interface LoginPageProps {
   onNavigate: (path: string, state?: any) => void;
@@ -99,47 +110,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#0A0A0A] text-[#ECECEC] flex flex-col justify-between items-center px-4 py-8 select-none relative overflow-hidden">
-      {/* Subtle background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#da0a2c]/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-screen bg-[#0A0A0A] text-[#ECECEC] flex flex-col justify-center items-center px-4 py-8 select-none relative overflow-hidden font-sans">
+      {/* Subtle Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[#da0a2c]/5 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Top Brand Nav */}
-      <div className="w-full max-w-5xl flex items-center justify-between z-10">
-        <div className="flex items-center gap-2.5">
-          <img
-            src="/logo-editorsuite.svg"
-            alt="EDITOR SUITE"
-            className="h-8 w-auto object-contain"
-            onError={(e) => {
-              e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
-            }}
-          />
-          <span className="text-sm font-bold tracking-tight text-[#ECECEC]">
-            3D JERSEY STUDIO
-          </span>
-        </div>
-        <button
-          onClick={() => onNavigate('/register')}
-          className="text-xs text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
-        >
-          Belum punya akun? <span className="text-white font-medium underline underline-offset-4">Daftar sekarang</span>
-        </button>
-      </div>
-
-      {/* Main Login Card */}
-      <div className="w-full max-w-md my-auto z-10">
-        <div className="bg-[#121212] border border-[#262626] rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-md">
+      {/* Main Clean Card */}
+      <main className="w-full max-w-sm z-10">
+        <div className="bg-[#111114] border border-white/10 rounded-2xl p-6 sm:p-7 shadow-2xl shadow-black/90 backdrop-blur-xl">
+          
           {/* Header */}
-          <div className="space-y-1.5 mb-6 text-center">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1C1C1C] border border-[#2E2E2E] text-[11px] text-[#A3A3A3] mb-2">
-              <Sparkles className="w-3 h-3 text-[#da0a2c]" />
-              <span>EditorSuite Studio Authentication</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Masuk ke Studio
+          <div className="mb-6 text-center">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mb-1">
+              Login
             </h1>
-            <p className="text-xs sm:text-sm text-[#737373]">
-              Akses 3D Jersey Studio, simpan tekstur UV, dan render 4K
+            <p className="text-xs text-[#888888]">
+              Masuk untuk melanjutkan ke studio
             </p>
           </div>
 
@@ -148,9 +133,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             type="button"
             onClick={handleGoogleClick}
             disabled={isGoogleLoading || isLoading}
-            className="w-full py-2.5 px-4 rounded-xl bg-[#1A1A1A] hover:bg-[#222222] border border-[#333333] text-xs font-semibold text-white transition-all flex items-center justify-center gap-3 cursor-pointer mb-5 shadow-sm active:scale-[0.99] disabled:opacity-50"
+            className="w-full py-2.5 px-4 rounded-xl bg-[#18181F] hover:bg-[#20202A] border border-white/10 text-xs font-semibold text-white transition-all flex items-center justify-center gap-2.5 cursor-pointer mb-5 shadow-sm active:scale-[0.98] disabled:opacity-50"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -174,10 +159,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           {/* Divider */}
           <div className="relative mb-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#262626]"></div>
+              <div className="w-full border-t border-white/10"></div>
             </div>
-            <div className="relative flex justify-center text-[10px] uppercase">
-              <span className="bg-[#121212] px-2 text-[#666666]">atau dengan email</span>
+            <div className="relative flex justify-center text-[10px] uppercase font-medium tracking-wider">
+              <span className="bg-[#111114] px-2 text-[#666666]">atau email</span>
             </div>
           </div>
 
@@ -185,7 +170,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           {errorMessage && (
             <div className="mb-4 p-3 rounded-lg bg-[#2A1414] border border-[#EF4444]/40 text-[#FCA5A5] text-xs flex items-center gap-2.5 animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0" />
-              <span>{errorMessage}</span>
+              <span className="leading-tight">{errorMessage}</span>
             </div>
           )}
 
@@ -193,10 +178,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-xs font-medium text-[#A3A3A3] block mb-1.5">
-                Alamat Email
+                Email
               </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-[#595959] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <div className="relative group">
+                <Mail className="w-4 h-4 text-[#666666] group-focus-within:text-[#da0a2c] transition-colors absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   required
@@ -204,7 +189,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nama@email.com"
                   disabled={isLoading}
-                  className="w-full bg-[#181818] border border-[#2A2A2A] focus:border-[#da0a2c] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none transition-colors disabled:opacity-50"
+                  className="w-full bg-[#18181C] border border-white/10 focus:border-[#da0a2c] focus:ring-1 focus:ring-[#da0a2c] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none transition-all disabled:opacity-50"
                 />
               </div>
             </div>
@@ -213,8 +198,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
               <label className="text-xs font-medium text-[#A3A3A3] block mb-1.5">
                 Kata Sandi
               </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-[#595959] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <div className="relative group">
+                <Lock className="w-4 h-4 text-[#666666] group-focus-within:text-[#da0a2c] transition-colors absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -222,12 +207,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   disabled={isLoading}
-                  className="w-full bg-[#181818] border border-[#2A2A2A] focus:border-[#da0a2c] rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none transition-colors disabled:opacity-50"
+                  className="w-full bg-[#18181C] border border-white/10 focus:border-[#da0a2c] focus:ring-1 focus:ring-[#da0a2c] rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none transition-all disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#595959] hover:text-[#A3A3A3] cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666666] hover:text-white cursor-pointer p-1 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -237,7 +222,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#da0a2c] hover:bg-[#b80825] text-xs font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/40 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+              className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#da0a2c] hover:bg-[#b80825] text-xs font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#da0a2c]/20 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -246,44 +231,129 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 </>
               ) : (
                 <>
-                  <span>Masuk ke Studio</span>
+                  <span>Login</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Footer note */}
-          <div className="mt-5 pt-4 border-t border-[#262626] text-center space-y-2">
+          {/* Clean Card Footer */}
+          <div className="mt-5 pt-4 border-t border-white/10 text-center">
             <p className="text-xs text-[#737373]">
               Belum punya akun?{' '}
               <button
                 type="button"
                 onClick={() => onNavigate('/register')}
-                className="text-white font-medium hover:underline cursor-pointer"
+                className="text-white font-medium hover:underline hover:text-[#da0a2c] transition-colors cursor-pointer"
               >
-                Daftar sekarang
-              </button>
-            </p>
-            <p className="text-[11px] text-[#555555]">
-              Perlu verifikasi email?{' '}
-              <button
-                type="button"
-                onClick={() => onNavigate('/verify-email')}
-                className="text-[#A3A3A3] hover:text-white underline cursor-pointer"
-              >
-                Masukkan kode OTP
+                Signup
               </button>
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Footer */}
-      <div className="w-full max-w-5xl flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#555555] gap-2 z-10">
-        <span>&copy; {new Date().getFullYear()} EDITOR SUITE &middot; 3D Jersey Studio</span>
-        <span>Secure PostgreSQL Authentication &bull; editorsuite.cloud</span>
-      </div>
+      </main>
     </div>
   );
 };
+
+export default function App() {
+  const [currentPath, setCurrentPath] = useState('/login');
+  const [mockRequireVerify, setMockRequireVerify] = useState(false);
+  const [mockFailLogin, setMockFailLogin] = useState(false);
+
+  // Mock Authentication Provider logic
+  const mockAuthContext: AuthContextType = {
+    login: async (email, password) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      
+      if (mockFailLogin) {
+        return { success: false, error: 'Email atau password yang Anda masukkan salah.' };
+      }
+      
+      if (mockRequireVerify) {
+        return { 
+          success: false, 
+          requiresVerification: true, 
+          email: email || 'user@editorsuite.cloud' 
+        };
+      }
+
+      return { success: true };
+    },
+    loginWithGoogle: async (token) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      if (mockFailLogin) {
+        return { success: false, error: 'Gagal mengautentikasi akun Google.' };
+      }
+      return { success: true };
+    }
+  };
+
+  const handleNavigate = (path: string, state?: any) => {
+    setCurrentPath(path);
+  };
+
+  return (
+    <AuthContext.Provider value={mockAuthContext}>
+      <div className="relative min-h-screen bg-black">
+        {/* Interactive Simulation Bar */}
+        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 bg-[#14141F]/90 backdrop-blur-md border border-white/15 px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-4 text-xs text-white max-w-[95vw] overflow-x-auto">
+          <div className="flex items-center gap-2 border-r border-white/10 pr-3">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-medium text-gray-300">Clean UI Preview</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-gray-400 hover:text-white">
+              <input
+                type="checkbox"
+                checked={mockRequireVerify}
+                onChange={(e) => setMockRequireVerify(e.target.checked)}
+                className="rounded bg-black border-gray-600 text-[#da0a2c] focus:ring-0"
+              />
+              Simulasikan OTP Redirect
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-gray-400 hover:text-white">
+              <input
+                type="checkbox"
+                checked={mockFailLogin}
+                onChange={(e) => setMockFailLogin(e.target.checked)}
+                className="rounded bg-black border-gray-600 text-[#da0a2c] focus:ring-0"
+              />
+              Simulasikan Error
+            </label>
+          </div>
+
+          <button
+            onClick={() => setCurrentPath('/login')}
+            className="flex items-center gap-1 px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-md text-[11px] transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" /> Reset View
+          </button>
+        </div>
+
+        {/* View Switcher based on Navigation state */}
+        {currentPath.startsWith('/login') ? (
+          <LoginPage onNavigate={handleNavigate} />
+        ) : (
+          <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#da0a2c]/10 border border-[#da0a2c]/30 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(218,10,44,0.3)]">
+              <CheckCircle className="w-7 h-7 text-[#da0a2c]" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Navigated Route</h2>
+            <p className="text-xs font-mono text-[#da0a2c] bg-[#12121A] px-4 py-2 rounded-xl border border-white/10 mb-6">
+              {currentPath}
+            </p>
+            <button
+              onClick={() => setCurrentPath('/login')}
+              className="px-5 py-2 bg-[#da0a2c] hover:bg-[#b80825] text-xs font-semibold rounded-xl text-white transition-all shadow-lg shadow-[#da0a2c]/30 cursor-pointer"
+            >
+              Kembali ke Login Studio
+            </button>
+          </div>
+        )}
+      </div>
+    </AuthContext.Provider>
+  );
+}
