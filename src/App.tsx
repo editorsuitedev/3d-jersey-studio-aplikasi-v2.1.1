@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { JERSEY_MODELS } from './data/models';
+import { JERSEY_MODELS, FREE_MODEL_ID } from './data/models';
 import { createInitialLayers } from './data/defaultAssets';
 import {
   JerseyModel,
@@ -77,11 +77,12 @@ export default function App() {
     }
   }, [currentUser, isAuthLoading, currentPath]);
 
-  // Active 3D Jersey Model (Default to 01. O Neck)
-  const [currentModel, setCurrentModel] = useState<JerseyModel>(JERSEY_MODELS[0]);
+  // Active 3D Jersey Model (Free plan restricted to POLO V2, PRO accesses all)
+  const defaultModel = JERSEY_MODELS.find((m) => m.id === FREE_MODEL_ID) || JERSEY_MODELS[0];
+  const [currentModel, setCurrentModel] = useState<JerseyModel>(defaultModel);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
 
-  // UI Drawers & Modals (Models drawer closed on initial load per user request)
+  // UI Drawers & Modals
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerCategory, setDrawerCategory] = useState<'jersey' | 'hanger' | 'mannequin'>('jersey');
   const [activeTool, setActiveTool] = useState<ActiveTool>('design');
@@ -89,6 +90,7 @@ export default function App() {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [lockedModelAttempt, setLockedModelAttempt] = useState<string | null>(null);
 
   // Video recording states
   const [isExportingVideo, setIsExportingVideo] = useState(false);
@@ -96,7 +98,7 @@ export default function App() {
 
   // Mockup & Layer Settings
   const [mockup, setMockup] = useState<MockupSettings>({
-    modelId: JERSEY_MODELS[0].id,
+    modelId: defaultModel.id,
     baseColor: '#2B2B2B', // Initial 3D model color #2B2B2B
     accentColor: '#18181B',
     collarColor: '#18181B',
@@ -179,8 +181,28 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<'DESIGN' | 'EFFECTS'>('DESIGN');
 
+  // Enforce Free Plan restriction: only POLO V2 can be active for free/unauthenticated users
+  useEffect(() => {
+    if (!isAuthLoading && currentUser?.plan !== 'pro') {
+      if (currentModel.id !== FREE_MODEL_ID) {
+        const freeModel = JERSEY_MODELS.find((m) => m.id === FREE_MODEL_ID);
+        if (freeModel) {
+          setCurrentModel(freeModel);
+          setMockup((prev) => ({ ...prev, modelId: freeModel.id }));
+        }
+      }
+    }
+  }, [currentUser, isAuthLoading, currentModel.id]);
+
   // Model Selection
   const handleSelectModel = (model: JerseyModel) => {
+    // Check if free user is trying to access locked model
+    if (currentUser?.plan !== 'pro' && model.id !== FREE_MODEL_ID) {
+      setLockedModelAttempt(model.name);
+      setIsProModalOpen(true);
+      return;
+    }
+
     if (model.id === currentModel.id) return;
     setIsLoadingModel(true);
     setCurrentModel(model);
@@ -448,6 +470,11 @@ export default function App() {
           onSelectModel={handleSelectModel}
           isLoadingModel={isLoadingModel}
           category={drawerCategory}
+          userPlan={currentUser?.plan || 'free'}
+          onUpgradePro={(modelName) => {
+            setLockedModelAttempt(modelName || null);
+            setIsProModalOpen(true);
+          }}
         />
 
         {/* Center 3D Viewport with OrbitControls & Gizmo */}
@@ -543,11 +570,15 @@ export default function App() {
       {/* 6. PRO Membership Modal */}
       <ProModal
         isOpen={isProModalOpen}
-        onClose={() => setIsProModalOpen(false)}
+        onClose={() => {
+          setIsProModalOpen(false);
+          setLockedModelAttempt(null);
+        }}
         onOpenLogin={() => {
           setIsProModalOpen(false);
           setIsLoginModalOpen(true);
         }}
+        lockedModelName={lockedModelAttempt}
       />
     </div>
   );

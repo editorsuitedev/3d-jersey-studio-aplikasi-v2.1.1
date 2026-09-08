@@ -1,5 +1,16 @@
 import { JerseyModel } from '../types';
 
+/**
+ * Free plan restriction: Only POLO V2 model is accessible for free.
+ * All other 3D models require PRO plan.
+ */
+export const FREE_MODEL_ID = '08-polo-v2';
+
+export function isModelAvailableForPlan(modelId: string, plan: string | null | undefined): boolean {
+  if (plan === 'pro') return true;
+  return modelId === FREE_MODEL_ID;
+}
+
 export const JERSEY_MODELS: JerseyModel[] = [
   {
     id: '01-o-neck',

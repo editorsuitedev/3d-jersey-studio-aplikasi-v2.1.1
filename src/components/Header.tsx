@@ -9,7 +9,7 @@ interface HeaderProps {
   onOpenPro: () => void;
   onNavigate?: (path: string) => void;
   onLogout?: () => void;
-  currentUser: { email: string; name: string } | null;
+  currentUser: { email: string; name: string; plan?: string } | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -95,11 +95,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* PRO Button */}
         <button
           onClick={onOpenPro}
-          className="h-8 px-2 sm:px-2.5 rounded bg-[#da0a2c]/15 border border-[#da0a2c]/50 hover:border-[#da0a2c] hover:bg-[#da0a2c]/25 text-[#da0a2c] font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
-          title="Editor Suite PRO Access"
+          className={`h-8 px-2 sm:px-2.5 rounded font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer ${
+            currentUser?.plan === 'pro'
+              ? 'bg-[#da0a2c]/20 border border-[#da0a2c]/60 text-[#FF6B81] hover:bg-[#da0a2c]/30'
+              : 'bg-[#da0a2c] hover:bg-[#b80825] text-white'
+          }`}
+          title={currentUser?.plan === 'pro' ? 'PRO Lifetime Aktif' : 'Upgrade ke PRO via Xendit'}
         >
-          <Crown className="w-3.5 h-3.5 text-[#da0a2c] fill-[#da0a2c]/30" />
-          <span className="tracking-tight text-white hidden xs:inline">PRO</span>
+          <Crown className="w-3.5 h-3.5" />
+          <span className="tracking-tight hidden xs:inline">
+            {currentUser?.plan === 'pro' ? 'PRO' : 'UPGRADE PRO'}
+          </span>
         </button>
 
         {/* Avatar Icon for Login Access */}
@@ -122,10 +128,21 @@ export const Header: React.FC<HeaderProps> = ({
           {isDropdownOpen && currentUser && (
             <div className="absolute right-0 mt-2 w-56 bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-3.5 py-2 border-b border-[#242424]">
-                <div className="text-xs font-semibold text-white truncate">
-                  {currentUser.name}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white truncate max-w-[120px]">
+                    {currentUser.name}
+                  </span>
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      currentUser.plan === 'pro'
+                        ? 'bg-[#da0a2c] text-white'
+                        : 'bg-[#262626] text-[#A3A3A3]'
+                    }`}
+                  >
+                    {currentUser.plan === 'pro' ? 'PRO' : 'FREE'}
+                  </span>
                 </div>
-                <div className="text-[11px] text-[#737373] truncate font-mono">
+                <div className="text-[11px] text-[#737373] truncate font-mono mt-0.5">
                   {currentUser.email}
                 </div>
               </div>

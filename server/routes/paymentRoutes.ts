@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { PaymentService } from '../services/paymentService';
-import { findUserById } from '../services/userService';
+import { findUserById, toSafeUser } from '../services/userService';
 
 export const paymentRouter = Router();
 
@@ -59,6 +59,36 @@ const handleCreatePaymentIntent = async (req: AuthenticatedRequest, res: Respons
 
 paymentRouter.post('/create-intent', authMiddleware, handleCreatePaymentIntent);
 paymentRouter.post('/create-invoice', authMiddleware, handleCreatePaymentIntent);
+
+/**
+ * POST /api/payment/confirm-payment
+ * Confirms payment and updates user plan to pro
+ */
+paymentRouter.post('/confirm-payment', authMiddleware, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Harap login terlebih dahulu.' });
+      return;
+    }
+
+    const { externalId } = req.body || {};
+    const result = await PaymentService.confirmPayment(req.user.id, externalId);
+    if (!result.success) {
+      res.status(400).json({ error: result.message });
+      return;
+    }
+
+    const updatedUser = await findUserById(req.user.id);
+    res.json({
+      success: true,
+      message: 'Pembayaran berhasil dikonfirmasi! Status akun Anda telah aktif sebagai PRO Lifetime.',
+      user: updatedUser ? toSafeUser(updatedUser) : null,
+    });
+  } catch (error) {
+    console.error('[Confirm Payment Error]:', error);
+    res.status(500).json({ error: 'Terjadi kendala saat mengonfirmasi pembayaran.' });
+  }
+});
 
 /**
  * POST /api/payment/webhook
