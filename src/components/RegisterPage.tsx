@@ -708,47 +708,6 @@ export default function App() {
         {/* Subtle Ambient Red Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#da0a2c]/5 rounded-full blur-[140px] pointer-events-none" />
 
-        {/* Top Control Switcher Bar */}
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-[#14141F]/90 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-2 sm:gap-3 text-xs text-white max-w-[95vw] overflow-x-auto">
-          <div className="flex items-center gap-1.5 border-r border-white/10 pr-2.5 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-[#da0a2c] animate-pulse" />
-            <span className="font-semibold text-gray-200 text-[11px]">Auth Suite Preview</span>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            {[
-              { path: '/login', label: 'Login' },
-              { path: '/register', label: 'Register' },
-              { path: '/verify-email', label: 'OTP Code' },
-              { path: '/forgot-password', label: 'Forgot' },
-            ].map((route) => (
-              <button
-                key={route.path}
-                onClick={() => handleNavigate(route.path)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                  currentPath === route.path
-                    ? 'bg-[#da0a2c] text-white shadow-sm'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {route.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="border-l border-white/10 pl-2 flex items-center gap-2 shrink-0">
-            <label className="flex items-center gap-1 cursor-pointer text-[10px] text-gray-400 hover:text-white">
-              <input
-                type="checkbox"
-                checked={mockFailLogin}
-                onChange={(e) => setMockFailLogin(e.target.checked)}
-                className="rounded bg-black border-gray-600 text-[#da0a2c] focus:ring-0"
-              />
-              Simulasikan Error
-            </label>
-          </div>
-        </div>
-
         {/* Page Switcher View */}
         <main className="w-full flex justify-center items-center">
           {currentPath === '/login' && <LoginPage onNavigate={handleNavigate} />}
