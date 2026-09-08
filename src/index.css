@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Custom Dark Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #0d0d0d;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #404040;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Slider custom styles */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  border: 1px solid #595959;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  border: 1px solid #595959;
+}
+
+/* User-requested accordion styling */
+.rounded-lg.bg-\[\#181818\].border.border-\[\#262626\].overflow-hidden {
+  background-color: #121212;
+  border: none;
+  border-bottom: 1px solid #262626;
+  border-radius: 0px;
+}
+
+/* Tighter letter spacing for capital letters & uppercase text */
+.uppercase, [class*="uppercase"] {
+  letter-spacing: -0.03em !important;
+}
+
+/* User-requested .w-80 width override to 65 */
+.w-80 {
+  width: calc(var(--spacing) * 65) !important;
+}

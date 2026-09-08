@@ -1,0 +1,6 @@
+{
+  "name": "3D Jersey Studio",
+  "description": "Professional 3D jersey mockup generator and custom texture visualizer by EDITOR SUITE",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
