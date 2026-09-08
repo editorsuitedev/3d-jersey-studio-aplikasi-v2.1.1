@@ -94,7 +94,11 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ initialEmail =
 
       {/* Top Brand Nav */}
       <div className="w-full max-w-5xl flex items-center justify-between z-10">
-        <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => onNavigate('/studio')}
+          className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer text-left"
+        >
           <img
             src="/logo-editorsuite.svg"
             alt="EDITOR SUITE"
@@ -106,13 +110,22 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ initialEmail =
           <span className="text-sm font-bold tracking-tight text-[#ECECEC]">
             3D JERSEY STUDIO
           </span>
-        </div>
-        <button
-          onClick={() => onNavigate('/login')}
-          className="text-xs text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
-        >
-          Kembali ke <span className="text-white font-medium underline underline-offset-4">Halaman Masuk</span>
         </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onNavigate('/studio')}
+            className="px-3 py-1.5 rounded-lg bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-xs font-medium text-[#ECECEC] transition-all cursor-pointer"
+          >
+            Buka Studio
+          </button>
+          <button
+            onClick={() => onNavigate('/login')}
+            className="text-xs text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
+          >
+            Kembali ke <span className="text-white font-medium underline underline-offset-4">Halaman Masuk</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Card */}

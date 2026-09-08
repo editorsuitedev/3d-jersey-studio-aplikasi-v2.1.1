@@ -56,23 +56,23 @@ export default function App() {
     setCurrentPath(path);
   };
 
-  // Guard protected routes
+  // Route synchronization and protection
   useEffect(() => {
     if (isAuthLoading) return;
 
-    if (!currentUser) {
-      if (currentPath !== '/login' && currentPath !== '/register') {
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', '/login');
-        }
-        setCurrentPath('/login');
-      }
-    } else {
+    if (currentUser) {
       if (currentPath === '/login' || currentPath === '/register') {
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, '', '/studio');
         }
         setCurrentPath('/studio');
+      }
+    } else {
+      if (currentPath === '/account') {
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', '/login');
+        }
+        setCurrentPath('/login');
       }
     }
   }, [currentUser, isAuthLoading, currentPath]);
@@ -367,20 +367,21 @@ export default function App() {
     );
   }
 
-  // Not authenticated: Route to Register, Verify Email, or Login
-  if (!currentUser) {
-    if (currentPath === '/register') {
-      return <RegisterPage onNavigate={navigate} />;
-    }
-    if (currentPath.startsWith('/verify-email')) {
-      return <VerifyEmailPage onNavigate={navigate} />;
-    }
+  // Explicit subpage routing
+  if (currentPath === '/register') {
+    return <RegisterPage onNavigate={navigate} />;
+  }
+  if (currentPath.startsWith('/verify-email')) {
+    return <VerifyEmailPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/login') {
     return <LoginPage onNavigate={navigate} />;
   }
-
-  // Authenticated: Route to Account Profile
   if (currentPath === '/account') {
-    return <AccountPage onNavigate={navigate} />;
+    if (currentUser) {
+      return <AccountPage onNavigate={navigate} />;
+    }
+    return <LoginPage onNavigate={navigate} />;
   }
 
   // Authenticated: Render Protected 3D Jersey Studio
