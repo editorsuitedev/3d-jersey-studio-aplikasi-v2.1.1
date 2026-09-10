@@ -31,7 +31,7 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.keys().hasAll(['id', 'name', 'email', 'createdAt', 'updatedAt']) &&
         data.id is string && data.id.size() <= 128 &&
-        data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
         data.email is string && data.email.size() <= 255 &&
         (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1024)) &&
         (!('passwordHash' in data) || (data.passwordHash is string && data.passwordHash.size() <= 256));
@@ -105,7 +105,8 @@ service cloud.firestore {
           incoming().updatedAt == request.time &&
           incoming().diff(existing()).affectedKeys().hasOnly([
             'name', 'modelId', 'baseColor', 'accentColor', 'collarColor', 'sleeveColor',
-            'pattern', 'roughness', 'metalness', 'fabricSheen', 'layersCount', 'previewUrl', 'updatedAt'
+            'pattern', 'roughness', 'metalness', 'fabricSheen', 'layersCount', 'previewUrl', 'updatedAt',
+            'mockupState', 'lightingState', 'cameraState', 'transformState'
           ]);
 
         allow delete: if isOwner(userId) && isValidId(jerseyId);

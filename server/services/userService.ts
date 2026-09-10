@@ -3,8 +3,6 @@ import crypto from 'crypto';
 import {
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
   collection,
   query,
   where,
@@ -116,26 +114,6 @@ export async function createUser(data: {
     updated_at: now,
   };
 
-  if (db) {
-    try {
-      await setDoc(doc(db, 'users', id), {
-        id,
-        email: normalizedEmail,
-        name: data.name.trim(),
-        passwordHash,
-        password_hash: passwordHash,
-        avatar: data.avatar || '',
-        createdAt: now,
-        created_at: now,
-        updatedAt: now,
-        updated_at: now,
-      });
-      console.log(`[Firebase Database] User created in Firestore collection 'users': ${id} (${normalizedEmail})`);
-    } catch (err) {
-      console.warn('[Firebase Database] Note writing to Firestore, saved in memory cache:', (err as Error).message);
-    }
-  }
-
   await memoryStore.create({
     email: normalizedEmail,
     name: data.name.trim(),
@@ -150,27 +128,6 @@ export async function updateUser(
   id: string,
   updates: { name?: string; email?: string; avatar?: string }
 ): Promise<SafeUser | null> {
-  const db = getFirestoreDb();
-  const now = new Date().toISOString();
-
-  if (db) {
-    try {
-      const userRef = doc(db, 'users', id);
-      const firestoreUpdates: Record<string, any> = {
-        updatedAt: now,
-        updated_at: now,
-      };
-      if (updates.name !== undefined) firestoreUpdates.name = updates.name.trim();
-      if (updates.email !== undefined) firestoreUpdates.email = updates.email.trim().toLowerCase();
-      if (updates.avatar !== undefined) firestoreUpdates.avatar = updates.avatar;
-
-      await updateDoc(userRef, firestoreUpdates);
-      console.log(`[Firebase Database] User updated in Firestore collection 'users': ${id}`);
-    } catch (err) {
-      console.warn('[Firebase Database] Note updating in Firestore, sync to memory:', (err as Error).message);
-    }
-  }
-
   const updated = await memoryStore.update(id, updates);
   if (updated) return toSafeUser(updated);
 

@@ -1,12 +1,12 @@
 {
-  "projectId": "hopeful-weaver-n4r4b",
-  "appId": "1:253958654785:web:4560e0d70da31e16f46fc0",
-  "apiKey": "AIzaSyATirEzTlioElWIkx_i0lyQiIgGozCBppM",
-  "authDomain": "hopeful-weaver-n4r4b.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-3djerseystudioau-39364223-e786-4709-a737-6b91216b9735",
-  "storageBucket": "hopeful-weaver-n4r4b.firebasestorage.app",
-  "messagingSenderId": "253958654785",
-  "measurementId": "",
-  "oAuthClientId": "253958654785-49s1vhnmca27q3p8ku2qpg959gimm5e9.apps.googleusercontent.com",
+  "projectId": "d-studio-e414d",
+  "appId": "1:526887783805:web:ec4562ffc108e60741d014",
+  "apiKey": "AIzaSyD7iiYbLXB1d1Bwx6SLYXDzp9E1Od0ecsQ",
+  "authDomain": "d-studio-e414d.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "d-studio-e414d.firebasestorage.app",
+  "messagingSenderId": "526887783805",
+  "measurementId": "G-SS0KP000E7",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, Eye, EyeOff, Check, ArrowRight, ShieldCheck } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, Check, ArrowRight, ShieldCheck, AlertCircle, ExternalLink, Copy } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { FloatingInput } from './FloatingInput';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -13,46 +15,79 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
   currentUser,
-  onLogin,
   onLogout,
 }) => {
+  const { loginWithGoogle, login, register } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState(currentUser?.email || 'editorsuite@gmail.com');
-  const [password, setPassword] = useState('••••••••••••');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isVerificationPending, setIsVerificationPending] = useState(false);
+  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
-    // Smooth simulated authentication
-    setTimeout(() => {
+    try {
+      if (isSignUp) {
+        const name = email.split('@')[0] || 'Studio Designer';
+        const result = await register(name, email, password, password);
+        if (result.success) {
+          setIsVerificationPending(true);
+        } else {
+          setErrorMessage(result.error || 'Gagal mendaftar.');
+        }
+      } else {
+        const result = await login(email, password);
+        if (result.success) {
+          setLoginSuccess(true);
+          setTimeout(() => {
+            setLoginSuccess(false);
+            onClose();
+          }, 600);
+        } else {
+          setErrorMessage(result.error || 'Email atau password salah.');
+        }
+      }
+    } catch {
+      setErrorMessage('Terjadi kesalahan koneksi server.');
+    } finally {
       setIsLoading(false);
-      setLoginSuccess(true);
-      const name = email.split('@')[0] || 'Studio User';
-      onLogin({ email, name });
-      setTimeout(() => {
-        setLoginSuccess(false);
-        onClose();
-      }, 700);
-    }, 600);
+    }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMessage(null);
+    setUnauthorizedDomain(null);
+    try {
+      const result = await loginWithGoogle();
+      if (result.success) {
+        setLoginSuccess(true);
+        setTimeout(() => {
+          setLoginSuccess(false);
+          onClose();
+        }, 600);
+      } else if (!result.cancelled) {
+        if (result.unauthorizedDomain) {
+          setUnauthorizedDomain(result.unauthorizedDomain);
+        } else {
+          setErrorMessage(result.error || 'Gagal login dengan Google.');
+        }
+      }
+    } catch {
+      setErrorMessage('Gagal menghubungi Firebase Auth.');
+    } finally {
       setIsLoading(false);
-      setLoginSuccess(true);
-      onLogin({ email: 'editorsuite@gmail.com', name: 'Editor Suite Pro' });
-      setTimeout(() => {
-        setLoginSuccess(false);
-        onClose();
-      }, 700);
-    }, 600);
+    }
   };
 
   return (
@@ -128,6 +163,42 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </button>
               </div>
             </div>
+          ) : isVerificationPending ? (
+            // Verification pending state
+            <div className="space-y-4 text-center py-2 animate-in fade-in duration-200">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 mx-auto flex items-center justify-center text-emerald-400">
+                <Mail className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold text-white">Konfirmasi Email Anda</h3>
+                <p className="text-xs text-[#A3A3A3] leading-relaxed">
+                  Tautan konfirmasi telah dikirim ke <strong className="text-white break-all">{email}</strong>. Demi keamanan, Anda harus mengonfirmasi email terlebih dahulu sebelum dapat masuk.
+                </p>
+              </div>
+
+              <div className="p-3 bg-[#181818] border border-[#262626] rounded-lg text-left text-xs space-y-1.5 text-[#888]">
+                <p className="text-white font-medium text-[11px]">Langkah berikutnya:</p>
+                <ol className="list-decimal list-inside space-y-1 text-[11px]">
+                  <li>Buka kotak masuk (atau folder spam) di email Anda.</li>
+                  <li>Klik link verifikasi dari Firebase.</li>
+                  <li>Kembali ke studio dan masuk dengan akun Anda.</li>
+                </ol>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVerificationPending(false);
+                    setIsSignUp(false);
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-[#da0a2c] hover:bg-[#b80824] text-xs font-semibold text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Masuk ke Akun Anda</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           ) : (
             // Sign in / Sign up form
             <>
@@ -142,12 +213,62 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </p>
               </div>
 
-              {/* Social Login Button */}
+              {/* Unauthorized Domain Guide */}
+              {unauthorizedDomain && (
+                <div className="p-3.5 rounded-xl bg-[#1C1708] border border-amber-500/40 text-xs text-amber-200 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-white text-xs">Domain Belum Diizinkan</h4>
+                      <p className="text-[#A3A3A3] text-[11px] mt-0.5 leading-relaxed">
+                        Tambahkan domain aplikasi ini ke daftar Authorized Domains di Firebase Console (d-studio-e414d).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-black/60 rounded border border-[#333333] flex items-center justify-between gap-2">
+                    <span className="truncate font-mono text-[10px] text-emerald-400 select-all">
+                      {unauthorizedDomain}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(unauthorizedDomain);
+                        setCopiedDomain(true);
+                        setTimeout(() => setCopiedDomain(false), 2000);
+                      }}
+                      className="px-2 py-0.5 rounded bg-[#2A2A2A] hover:bg-[#383838] border border-[#444] text-[10px] text-white shrink-0 font-medium cursor-pointer"
+                    >
+                      {copiedDomain ? 'Tersalin' : 'Salin'}
+                    </button>
+                  </div>
+
+                  <a
+                    href="https://console.firebase.google.com/project/d-studio-e414d/authentication/settings"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-black font-semibold text-[11px] hover:bg-amber-400 transition-colors w-full justify-center"
+                  >
+                    <span>Buka Firebase Console Settings</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="p-3 rounded-lg bg-[#2A1414] border border-[#EF4444]/40 text-[#FCA5A5] text-xs flex items-center gap-2 animate-in fade-in duration-150">
+                  <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {/* Google Sign-In Button */}
               <button
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-lg bg-[#1A1A1A] border border-[#333333] hover:border-[#595959] hover:bg-[#242424] text-xs font-medium text-white transition-all flex items-center justify-center gap-2.5 active:scale-[0.99] disabled:opacity-60"
+                className="w-full py-3 px-4 rounded-xl bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#3A3A3A] hover:border-[#666] text-xs sm:text-sm font-semibold text-white transition-all flex items-center justify-center gap-3 active:scale-[0.99] disabled:opacity-60 cursor-pointer shadow-md"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -167,75 +288,55 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
               </button>
 
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-[#262626]" />
-                <span className="text-[10px] uppercase tracking-wider text-[#555555]">
-                  or with email
-                </span>
-                <div className="flex-1 h-px bg-[#262626]" />
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#262626]" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-[#121212] px-3 text-[#666666]">or with email</span>
+                </div>
               </div>
 
-              {/* Email / Password Form */}
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div>
-                  <label className="text-[11px] font-medium text-[#A3A3A3] block mb-1">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-3.5 h-3.5 text-[#595959] absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="name@editorsuite.cloud"
-                      className="w-full bg-[#181818] border border-[#2A2A2A] focus:border-[#595959] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-[#555555] focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
+              {/* Email / Password Form with Floating Labels */}
+              <form onSubmit={handleSubmit} className="space-y-3.5">
+                <FloatingInput
+                  id="modal-email"
+                  label="Email Address"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  autoComplete="email"
+                  icon={<Mail className="w-4 h-4" />}
+                />
 
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-medium text-[#A3A3A3]">
-                      Password
-                    </label>
-                    {!isSignUp && (
-                      <button
-                        type="button"
-                        className="text-[10px] text-[#737373] hover:text-white transition-colors"
-                      >
-                        Forgot password?
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Lock className="w-3.5 h-3.5 text-[#595959] absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="w-full bg-[#181818] border border-[#2A2A2A] focus:border-[#595959] rounded-lg pl-9 pr-9 py-2 text-xs text-white placeholder-[#555555] focus:outline-none transition-colors"
-                    />
+                <FloatingInput
+                  id="modal-password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                  icon={<Lock className="w-4 h-4" />}
+                  rightAction={
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#595959] hover:text-[#A3A3A3]"
+                      className="text-[#666666] hover:text-[#ECECEC] transition-colors cursor-pointer"
+                      tabIndex={-1}
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-3.5 h-3.5" />
-                      ) : (
-                        <Eye className="w-3.5 h-3.5" />
-                      )}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
 
-                <div className="pt-2">
+                <div className="pt-1">
                   <button
                     type="submit"
                     disabled={isLoading || loginSuccess}

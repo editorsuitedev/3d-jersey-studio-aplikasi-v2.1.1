@@ -21,7 +21,7 @@ async function startServer() {
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
 
-  // Initialize PostgreSQL database connection & table
+  // Initialize Firebase Firestore database connection
   await initDatabase();
 
   // API health check

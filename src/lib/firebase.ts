@@ -6,8 +6,11 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App instance safely (singleton pattern)
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// CRITICAL: The app will break without specifying firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// CRITICAL: Initialize Firestore safely with database ID or default
+export const db =
+  firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
 
 export const auth = getAuth(app);
 
@@ -28,7 +31,9 @@ export async function testFirestoreConnection(): Promise<boolean> {
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('[Firebase] Firestore client offline: Please check your Firebase configuration.');
+      console.warn(
+        '[Firebase] Firestore status: Database sedang offline atau belum diaktifkan di Firebase Console (d-studio-e414d).'
+      );
       isConnected = false;
     } else {
       // Permission denied or not-found still proves network connectivity to the Firestore instance

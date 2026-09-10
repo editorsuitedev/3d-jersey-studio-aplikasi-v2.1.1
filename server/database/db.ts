@@ -97,7 +97,10 @@ export async function initDatabase(): Promise<void> {
 
   try {
     firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-    firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+    firestoreDb =
+      firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+        ? getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId)
+        : getFirestore(firebaseApp);
 
     // Validate connectivity to Firestore instance
     try {

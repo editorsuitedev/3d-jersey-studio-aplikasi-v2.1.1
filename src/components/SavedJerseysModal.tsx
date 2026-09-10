@@ -12,6 +12,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { auth } from '../lib/firebase';
 import {
   SavedJerseyProject,
   saveJerseyToFirestore,
@@ -39,7 +40,7 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
   currentTransform,
   onLoadProject,
 }) => {
-  const { currentUser, isFirestoreConnected } = useAuth();
+  const { currentUser, isFirestoreConnected, loginWithGoogle } = useAuth();
   const [projects, setProjects] = useState<SavedJerseyProject[]>([]);
   const [projectName, setProjectName] = useState('Desain Jersey Kustom');
   const [isSaving, setIsSaving] = useState(false);
@@ -47,12 +48,17 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
   const [statusError, setStatusError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const currentFbUser = auth.currentUser;
+
   // Real-time Firestore sync
   useEffect(() => {
-    if (!isOpen || !currentUser?.id) return;
+    if (!isOpen || !currentFbUser?.uid) {
+      setProjects([]);
+      return;
+    }
 
     const unsubscribe = subscribeUserJerseys(
-      currentUser.id,
+      currentFbUser.uid,
       (items) => {
         setProjects(items);
       },
@@ -62,14 +68,14 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
     );
 
     return () => unsubscribe();
-  }, [isOpen, currentUser?.id]);
+  }, [isOpen, currentFbUser?.uid]);
 
   if (!isOpen) return null;
 
   const handleSaveCurrent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id) {
-      setStatusError('Silakan login terlebih dahulu untuk menyimpan ke database Firebase.');
+    if (!currentFbUser?.uid) {
+      setStatusError('Silakan login dengan akun Google terlebih dahulu untuk menyimpan ke database Firebase.');
       return;
     }
     if (isSaving) return;
@@ -79,7 +85,7 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
     setSaveSuccess(false);
 
     try {
-      await saveJerseyToFirestore(currentUser.id, {
+      await saveJerseyToFirestore(currentFbUser.uid, {
         name: projectName.trim() || 'Desain Jersey Kustom',
         mockup: currentMockup,
         lighting: currentLighting,
@@ -97,10 +103,10 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
   };
 
   const handleDelete = async (jerseyId: string) => {
-    if (!currentUser?.id || deletingId) return;
+    if (!currentFbUser?.uid || deletingId) return;
     setDeletingId(jerseyId);
     try {
-      await deleteJerseyFromFirestore(currentUser.id, jerseyId);
+      await deleteJerseyFromFirestore(currentFbUser.uid, jerseyId);
     } catch (err: any) {
       setStatusError(err.message || 'Gagal menghapus proyek dari Firestore.');
     } finally {
@@ -151,6 +157,37 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
             </div>
           )}
 
+          {/* Notice if not signed in with Firebase Auth */}
+          {!currentFbUser && (
+            <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-[#333333] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Database className="w-4 h-4 text-[#da0a2c] shrink-0" />
+                <p className="text-xs text-[#A3A3A3]">
+                  Masuk dengan Google untuk mengaktifkan sinkronisasi database cloud Firestore.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  setStatusError(null);
+                  const res = await loginWithGoogle();
+                  if (!res.success && !res.cancelled) {
+                    setStatusError(res.error || 'Gagal login dengan Google');
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#262626] hover:bg-[#333333] border border-[#444444] text-xs font-medium text-white flex items-center gap-2 shrink-0 transition-all cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.97 0 12s.45 3.83 1.25 5.42l4.03-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+                <span>Masuk dengan Google</span>
+              </button>
+            </div>
+          )}
+
           {/* Form to Save Current Design */}
           <div className="p-4 rounded-xl bg-[#181818] border border-[#262626]">
             <h3 className="text-xs font-semibold text-white uppercase tracking-wider mb-2.5 flex items-center gap-2">
@@ -164,12 +201,12 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="Nama desain jersey..."
-                disabled={isSaving || !currentUser}
+                disabled={isSaving || !currentFbUser}
                 className="flex-1 bg-[#121212] border border-[#2E2E2E] focus:border-[#555] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-[#555] focus:outline-none transition-colors disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={isSaving || !currentUser}
+                disabled={isSaving || !currentFbUser}
                 className="px-4 py-2 rounded-xl bg-[#262626] border border-[#595959] hover:bg-[#333] hover:border-white text-xs font-semibold text-white transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50 active:scale-98"
               >
                 {isSaving ? (
