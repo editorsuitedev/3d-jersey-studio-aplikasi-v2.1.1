@@ -3,7 +3,6 @@ import {
   findUserById,
   findUserByEmail,
   updateUser,
-  updateUserPlan,
   toSafeUser,
 } from '../services/userService';
 import {
@@ -98,37 +97,5 @@ accountRouter.patch('/', authMiddleware, async (req: AuthenticatedRequest, res):
   } catch (error) {
     console.error('Error updating account:', error);
     res.status(500).json({ error: 'Terjadi kesalahan server saat memperbarui akun' });
-  }
-});
-
-/**
- * POST /api/account/toggle-plan
- * Toggles plan between 'free' and 'pro' for testing
- */
-accountRouter.post('/toggle-plan', authMiddleware, async (req: AuthenticatedRequest, res): Promise<void> => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    const user = await findUserById(req.user.id);
-    if (!user) {
-      res.status(404).json({ error: 'User tidak ditemukan' });
-      return;
-    }
-
-    const targetPlan = req.body?.plan || (user.plan === 'pro' ? 'free' : 'pro');
-    await updateUserPlan(user.id, targetPlan);
-    const updated = await findUserById(user.id);
-
-    res.json({
-      success: true,
-      message: `Status paket berhasil diubah menjadi ${targetPlan.toUpperCase()}`,
-      user: updated ? toSafeUser(updated) : null,
-    });
-  } catch (error) {
-    console.error('Error toggling plan:', error);
-    res.status(500).json({ error: 'Gagal mengubah paket' });
   }
 });

@@ -1,14 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db, testFirestoreConnection } from '../lib/firebase';
 import { User, AuthResponse } from '../types/auth';
 
 interface AuthContextType {
   currentUser: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; requiresVerification?: boolean; email?: string; error?: string }>;
-  register: (name: string, email: string, password: string, confirmPassword?: string) => Promise<{ success: boolean; requiresVerification?: boolean; email?: string; message?: string; error?: string }>;
-  verifyEmail: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
-  resendVerification: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  loginWithGoogle: (credential: string) => Promise<{ success: boolean; error?: string }>;
+  isFirestoreConnected: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  register: (name: string, email: string, password: string, confirmPassword?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string; avatar?: string }) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
@@ -18,39 +26,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'editorsuite_auth_token';
 
-/**
- * Safely parse JSON responses to prevent DOMException / SyntaxError:
- * "The string did not match the expected pattern" in WebKit / Safari
- * when the server or gateway returns non-JSON (e.g. HTML 502/504 or error pages).
- */
-async function parseJsonSafely<T = any>(res: Response): Promise<{ data: T | null; text: string }> {
-  try {
-    const text = await res.text();
-    if (!text || !text.trim()) {
-      return { data: null, text: '' };
-    }
-    try {
-      const data = JSON.parse(text) as T;
-      return { data, text };
-    } catch {
-      return { data: null, text };
-    }
-  } catch {
-    return { data: null, text: '' };
-  }
-}
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFirestoreConnected, setIsFirestoreConnected] = useState(true);
+
+  // Test Firestore database connectivity on mount
+  useEffect(() => {
+    testFirestoreConnection()
+      .then((connected) => setIsFirestoreConnected(connected))
+      .catch(() => setIsFirestoreConnected(false));
+  }, []);
 
   const getHeaders = useCallback((): HeadersInit => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     const token = localStorage.getItem(TOKEN_KEY);
-    if (token && token.trim().length > 0) {
-      headers['Authorization'] = `Bearer ${token.trim()}`;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     return headers;
   }, []);
@@ -58,13 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fetch Current User from backend
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token || !token.trim()) {
-        setCurrentUser(null);
-        setIsLoading(false);
-        return;
-      }
-
       const res = await fetch('/api/auth/me', {
         method: 'GET',
         headers: getHeaders(),
@@ -72,76 +59,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (res.ok) {
-        const { data: user } = await parseJsonSafely<User>(res);
-        if (user && user.id) {
-          setCurrentUser(user);
-        } else {
-          setCurrentUser(null);
-          localStorage.removeItem(TOKEN_KEY);
-        }
+        const user: User = await res.json();
+        setCurrentUser(user);
       } else {
-        setCurrentUser(null);
-        if (res.status === 401 || res.status === 403) {
+        // If not logged in via backend token, check Firebase Auth state
+        if (!auth.currentUser) {
+          setCurrentUser(null);
           localStorage.removeItem(TOKEN_KEY);
         }
       }
     } catch (err) {
-      console.warn('[Auth] Note on user session refresh:', (err as any)?.message || err);
-      setCurrentUser(null);
+      console.warn('[Auth] Backend user session check notice:', err);
     } finally {
       setIsLoading(false);
     }
   }, [getHeaders]);
 
+  // Listen to Firebase Auth state
   useEffect(() => {
-    refreshUser();
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+      if (fbUser) {
+        const now = new Date().toISOString();
+        const userProfile: User = {
+          id: fbUser.uid,
+          name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Studio Designer',
+          email: fbUser.email || '',
+          avatar: fbUser.photoURL || null,
+          created_at: now,
+          updated_at: now,
+        };
+        setCurrentUser(userProfile);
+        setIsLoading(false);
+      } else {
+        refreshUser();
+      }
+    });
+
+    return () => unsubscribe();
   }, [refreshUser]);
 
-  const login = async (
-    email: string,
-    password: string
-  ): Promise<{ success: boolean; requiresVerification?: boolean; email?: string; error?: string }> => {
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      const normalizedEmail = (email || '').trim().toLowerCase();
-      const normalizedPassword = password || '';
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result.user;
 
-      if (!normalizedEmail || !normalizedPassword) {
-        return { success: false, error: 'Email dan kata sandi wajib diisi.' };
+      const now = new Date().toISOString();
+      const userProfile: User = {
+        id: fbUser.uid,
+        name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Studio Designer',
+        email: fbUser.email || '',
+        avatar: fbUser.photoURL || null,
+        created_at: now,
+        updated_at: now,
+      };
+
+      // Save user to Firestore collection `/users/{userId}`
+      try {
+        const userDocRef = doc(db, 'users', fbUser.uid);
+        await setDoc(
+          userDocRef,
+          {
+            id: fbUser.uid,
+            name: userProfile.name,
+            email: userProfile.email,
+            avatar: userProfile.avatar || '',
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        console.log('[Firebase Database] Successfully saved Google user profile in Firestore.');
+      } catch (firestoreErr) {
+        console.warn('[Firebase Database] Note saving Google user profile to Firestore:', firestoreErr);
       }
 
+      setCurrentUser(userProfile);
+      return { success: true };
+    } catch (err: any) {
+      console.error('[Firebase Auth] Google login error:', err);
+      return { success: false, error: err.message || 'Gagal login dengan akun Google' };
+    }
+  };
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
+        body: JSON.stringify({ email, password }),
         credentials: 'include',
       });
 
-      const { data } = await parseJsonSafely<AuthResponse & { error?: string }>(res);
+      const data: AuthResponse & { error?: string } = await res.json();
 
-      if (res.status === 403 && data?.requiresVerification) {
-        return {
-          success: false,
-          requiresVerification: true,
-          email: data.email || normalizedEmail,
-          error: data.error,
-        };
-      }
-
-      if (!res.ok || !data || !data.success) {
-        const fallbackMsg = res.status === 401 ? 'Email atau kata sandi salah.' : 'Gagal masuk. Silakan periksa kembali akun Anda.';
-        return { success: false, error: data?.error || fallbackMsg };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Email atau password salah' };
       }
 
       if (data.token) {
         localStorage.setItem(TOKEN_KEY, data.token);
       }
-      if (data.user) {
-        setCurrentUser(data.user);
-      }
+      setCurrentUser(data.user);
       return { success: true };
     } catch (err) {
-      console.error('[Auth] Login connection error:', (err as any)?.message || err);
-      return { success: false, error: 'Gagal terhubung ke server autentikasi. Silakan periksa koneksi Anda.' };
+      console.error('[Auth] Login error:', err);
+      return { success: false, error: 'Gagal terhubung ke database server. Silakan coba lagi.' };
     }
   };
 
@@ -150,138 +174,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     password: string,
     confirmPassword?: string
-  ): Promise<{ success: boolean; requiresVerification?: boolean; email?: string; message?: string; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const normalizedName = (name || '').trim();
-      const normalizedEmail = (email || '').trim().toLowerCase();
-
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: normalizedName, email: normalizedEmail, password, confirmPassword }),
+        body: JSON.stringify({ name, email, password, confirmPassword }),
         credentials: 'include',
       });
 
-      const { data } = await parseJsonSafely<AuthResponse & { error?: string }>(res);
+      const data: AuthResponse & { error?: string } = await res.json();
 
-      if (!res.ok || !data) {
-        return { success: false, error: data?.error || 'Gagal mendaftar. Silakan periksa data Anda.' };
-      }
-
-      if (data.requiresVerification) {
-        return {
-          success: true,
-          requiresVerification: true,
-          email: data.email || normalizedEmail,
-          message: data.message,
-        };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Gagal mendaftar. Silakan periksa data Anda.' };
       }
 
       if (data.token) {
         localStorage.setItem(TOKEN_KEY, data.token);
       }
-      if (data.user) {
-        setCurrentUser(data.user);
-      }
+      setCurrentUser(data.user);
       return { success: true };
     } catch (err) {
-      console.error('[Auth] Registration connection error:', (err as any)?.message || err);
-      return { success: false, error: 'Gagal terhubung ke server. Silakan coba lagi.' };
-    }
-  };
-
-  const verifyEmail = async (email: string, code: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const normalizedEmail = (email || '').trim().toLowerCase();
-      const normalizedCode = (code || '').trim();
-
-      const res = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, otp: normalizedCode }),
-        credentials: 'include',
-      });
-
-      const { data } = await parseJsonSafely<AuthResponse & { error?: string }>(res);
-      if (!res.ok || !data || !data.success) {
-        return { success: false, error: data?.error || 'Kode verifikasi salah atau telah kadaluarsa.' };
-      }
-
-      if (data.token) {
-        localStorage.setItem(TOKEN_KEY, data.token);
-      }
-      if (data.user) {
-        setCurrentUser(data.user);
-      }
-      return { success: true };
-    } catch (err) {
-      console.error('[Auth] Verify connection error:', (err as any)?.message || err);
-      return { success: false, error: 'Gagal menghubungi server verifikasi.' };
-    }
-  };
-
-  const resendVerification = async (email: string): Promise<{ success: boolean; message?: string; error?: string }> => {
-    try {
-      const normalizedEmail = (email || '').trim().toLowerCase();
-
-      const res = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail }),
-        credentials: 'include',
-      });
-
-      const { data } = await parseJsonSafely<{ success?: boolean; message?: string; error?: string }>(res);
-      if (!res.ok || !data) {
-        return { success: false, error: data?.error || 'Gagal mengirim ulang kode verifikasi.' };
-      }
-      return { success: true, message: data.message || 'Kode verifikasi baru telah dikirimkan ke email Anda.' };
-    } catch (err) {
-      console.error('[Auth] Resend verification connection error:', (err as any)?.message || err);
-      return { success: false, error: 'Gagal menghubungi server.' };
-    }
-  };
-
-  const loginWithGoogle = async (credential: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential }),
-        credentials: 'include',
-      });
-
-      const { data } = await parseJsonSafely<AuthResponse & { error?: string }>(res);
-      if (!res.ok || !data || !data.success) {
-        return { success: false, error: data?.error || 'Autentikasi Google gagal.' };
-      }
-
-      if (data.token) {
-        localStorage.setItem(TOKEN_KEY, data.token);
-      }
-      if (data.user) {
-        setCurrentUser(data.user);
-      }
-      return { success: true };
-    } catch (err) {
-      console.error('[Auth] Google login connection error:', (err as any)?.message || err);
-      return { success: false, error: 'Gagal menghubungkan akun Google.' };
+      console.error('[Auth] Registration error:', err);
+      return { success: false, error: 'Gagal terhubung ke database server. Silakan coba lagi.' };
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
+      // Logout from backend session
       await fetch('/api/auth/logout', {
         method: 'POST',
         headers: getHeaders(),
         credentials: 'include',
       });
     } catch (err) {
-      console.warn('[Auth] Logout warning:', (err as any)?.message || err);
-    } finally {
-      localStorage.removeItem(TOKEN_KEY);
-      setCurrentUser(null);
+      console.warn('[Auth] Backend logout note:', err);
     }
+
+    try {
+      // Logout from Firebase
+      await firebaseSignOut(auth);
+    } catch (fbErr) {
+      console.warn('[Firebase Auth] SignOut note:', fbErr);
+    }
+
+    localStorage.removeItem(TOKEN_KEY);
+    setCurrentUser(null);
   };
 
   const updateProfile = async (data: {
@@ -297,19 +236,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         credentials: 'include',
       });
 
-      const { data: resData } = await parseJsonSafely<{ success?: boolean; user?: User; error?: string }>(res);
+      const resData = await res.json();
 
-      if (!res.ok || !resData || !resData.success) {
-        return { success: false, error: resData?.error || 'Gagal memperbarui profil' };
+      if (!res.ok || !resData.success) {
+        return { success: false, error: resData.error || 'Gagal memperbarui profil' };
       }
 
-      if (resData.user) {
-        setCurrentUser(resData.user);
+      // Also update Firestore directly if user id is available
+      if (currentUser?.id) {
+        try {
+          const userDocRef = doc(db, 'users', currentUser.id);
+          await setDoc(
+            userDocRef,
+            {
+              name: data.name || currentUser.name,
+              email: data.email || currentUser.email,
+              avatar: data.avatar ?? currentUser.avatar,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (fsErr) {
+          console.warn('[Firestore] Syncing profile update error:', fsErr);
+        }
       }
+
+      setCurrentUser(resData.user);
       return { success: true };
     } catch (err) {
-      console.error('[Auth] Update profile connection error:', (err as any)?.message || err);
-      return { success: false, error: 'Gagal terhubung ke server' };
+      console.error('[Auth] Update profile error:', err);
+      return { success: false, error: 'Gagal terhubung ke database server' };
     }
   };
 
@@ -318,11 +274,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         currentUser,
         isLoading,
+        isFirestoreConnected,
         login,
-        register,
-        verifyEmail,
-        resendVerification,
         loginWithGoogle,
+        register,
         logout,
         updateProfile,
         refreshUser,

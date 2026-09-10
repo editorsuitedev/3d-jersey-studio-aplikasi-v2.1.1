@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, Crown, User as UserIcon, Shirt, Settings, LogOut } from 'lucide-react';
+import { Download, Crown, User as UserIcon, Shirt, Settings, LogOut, Database, Cloud } from 'lucide-react';
 
 interface HeaderProps {
   currentModelName: string;
@@ -7,9 +7,10 @@ interface HeaderProps {
   onOpenUVEditor?: () => void;
   onOpenLogin: () => void;
   onOpenPro: () => void;
+  onOpenSavedJerseys?: () => void;
   onNavigate?: (path: string) => void;
   onLogout?: () => void;
-  currentUser: { email: string; name: string; plan?: string } | null;
+  currentUser: { email: string; name: string } | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenLogin,
   onOpenPro,
+  onOpenSavedJerseys,
   onNavigate,
   onLogout,
   currentUser,
@@ -81,6 +83,18 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0" ref={dropdownRef}>
+        {/* Firebase Cloud Saved Projects Button */}
+        {onOpenSavedJerseys && (
+          <button
+            onClick={onOpenSavedJerseys}
+            className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#181818] border border-[#2E2E2E] hover:border-[#555] text-xs text-[#D4D4D4] hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Buka Koleksi Desain Firebase Firestore"
+          >
+            <Database className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden sm:inline font-medium">Cloud Designs</span>
+          </button>
+        )}
+
         {/* Export Button (Desktop) */}
         <button
           onClick={onOpenExport}
@@ -95,17 +109,11 @@ export const Header: React.FC<HeaderProps> = ({
         {/* PRO Button */}
         <button
           onClick={onOpenPro}
-          className={`h-8 px-2 sm:px-2.5 rounded font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer ${
-            currentUser?.plan === 'pro'
-              ? 'bg-[#da0a2c]/20 border border-[#da0a2c]/60 text-[#FF6B81] hover:bg-[#da0a2c]/30'
-              : 'bg-[#da0a2c] hover:bg-[#b80825] text-white'
-          }`}
-          title={currentUser?.plan === 'pro' ? 'PRO Lifetime Aktif' : 'Upgrade ke PRO via Xendit'}
+          className="h-8 px-2 sm:px-2.5 rounded bg-[#da0a2c]/15 border border-[#da0a2c]/50 hover:border-[#da0a2c] hover:bg-[#da0a2c]/25 text-[#da0a2c] font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+          title="Editor Suite PRO Access"
         >
-          <Crown className="w-3.5 h-3.5" />
-          <span className="tracking-tight hidden xs:inline">
-            {currentUser?.plan === 'pro' ? 'PRO' : 'UPGRADE PRO'}
-          </span>
+          <Crown className="w-3.5 h-3.5 text-[#da0a2c] fill-[#da0a2c]/30" />
+          <span className="tracking-tight text-white hidden xs:inline">PRO</span>
         </button>
 
         {/* Avatar Icon for Login Access */}
@@ -128,26 +136,32 @@ export const Header: React.FC<HeaderProps> = ({
           {isDropdownOpen && currentUser && (
             <div className="absolute right-0 mt-2 w-56 bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-3.5 py-2 border-b border-[#242424]">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white truncate max-w-[120px]">
-                    {currentUser.name}
-                  </span>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      currentUser.plan === 'pro'
-                        ? 'bg-[#da0a2c] text-white'
-                        : 'bg-[#262626] text-[#A3A3A3]'
-                    }`}
-                  >
-                    {currentUser.plan === 'pro' ? 'PRO' : 'FREE'}
-                  </span>
+                <div className="text-xs font-semibold text-white truncate">
+                  {currentUser.name}
                 </div>
-                <div className="text-[11px] text-[#737373] truncate font-mono mt-0.5">
+                <div className="text-[11px] text-[#737373] truncate font-mono">
                   {currentUser.email}
+                </div>
+                <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400">
+                  <Database className="w-3 h-3" />
+                  <span>Firebase Firestore</span>
                 </div>
               </div>
 
               <div className="py-1">
+                {onOpenSavedJerseys && (
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onOpenSavedJerseys();
+                    }}
+                    className="w-full px-3.5 py-2 text-left text-xs text-[#CCCCCC] hover:text-white hover:bg-[#222222] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Cloud className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Desain Tersimpan (Cloud)</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
@@ -177,4 +191,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

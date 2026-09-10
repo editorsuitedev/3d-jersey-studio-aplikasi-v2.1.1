@@ -1,14 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-function getAuthSecret(): string {
-  const secret = process.env.AUTH_SECRET;
-  if (secret && secret.trim().length > 0) {
-    return secret.trim();
-  }
-  return 'editorsuite-3d-studio-secure-token-secret-fallback-2026';
-}
-
+export const AUTH_SECRET = process.env.AUTH_SECRET || 'editorsuite-3d-jersey-studio-super-secret-key-2026';
 export const TOKEN_EXPIRY = '7d';
 
 export interface AuthJwtPayload {
@@ -21,7 +14,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export function generateToken(payload: AuthJwtPayload): string {
-  return jwt.sign(payload, getAuthSecret(), { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, AUTH_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
 export function authMiddleware(
@@ -45,7 +38,7 @@ export function authMiddleware(
   }
 
   try {
-    const decoded = jwt.verify(token, getAuthSecret()) as AuthJwtPayload;
+    const decoded = jwt.verify(token, AUTH_SECRET) as AuthJwtPayload;
     req.user = decoded;
     next();
   } catch {

@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, ShieldCheck, LogOut, ArrowLeft, Check, AlertCircle, Save, Calendar, Key, Crown, CreditCard, Sparkles, RefreshCw } from 'lucide-react';
+import { User, Mail, ShieldCheck, LogOut, ArrowLeft, Check, AlertCircle, Save, Calendar, Key, Database } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { ProModal } from './ProModal';
 
 interface AccountPageProps {
   onNavigate: (path: string) => void;
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
-  const { currentUser, updateProfile, logout, refreshUser } = useAuth();
+  const { currentUser, updateProfile, logout, isFirestoreConnected } = useAuth();
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isTogglingPlan, setIsTogglingPlan] = useState(false);
-  const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -46,7 +43,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
     try {
       const res = await updateProfile({ name: name.trim(), email: email.trim() });
       if (res.success) {
-        setSuccessMessage('Profil berhasil diperbarui!');
+        setSuccessMessage('Profil berhasil diperbarui di Firebase Firestore!');
         setTimeout(() => setSuccessMessage(null), 4000);
       } else {
         setErrorMessage(res.error || 'Gagal memperbarui profil.');
@@ -68,36 +65,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
       onNavigate('/login');
     } finally {
       setIsLoggingOut(false);
-    }
-  };
-
-  const handleTogglePlan = async () => {
-    if (isTogglingPlan) return;
-    setIsTogglingPlan(true);
-    setErrorMessage(null);
-    try {
-      const targetPlan = currentUser?.plan === 'pro' ? 'free' : 'pro';
-      const res = await fetch('/api/account/toggle-plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('editorsuite_auth_token') || ''}`,
-        },
-        body: JSON.stringify({ plan: targetPlan }),
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (data.success) {
-        await refreshUser();
-        setSuccessMessage(`Status berhasil diubah ke ${targetPlan === 'pro' ? 'PRO Lifetime' : 'Free (POLO V2)'}`);
-        setTimeout(() => setSuccessMessage(null), 3500);
-      } else {
-        setErrorMessage(data.error || 'Gagal mengubah status');
-      }
-    } catch {
-      setErrorMessage('Terjadi kendala saat mengubah status');
-    } finally {
-      setIsTogglingPlan(false);
     }
   };
 
@@ -150,22 +117,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
                 {currentUser?.name || 'Studio User'}
               </h1>
               <p className="text-xs text-[#888888] font-mono">{currentUser?.email}</p>
-              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold">
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Email Terverifikasi</span>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Editor Suite Member</span>
                 </div>
-                {currentUser?.plan === 'pro' ? (
-                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#da0a2c]/10 border border-[#da0a2c]/30 text-[#ff4b65] text-[10px] font-semibold">
-                    <span>PRO Lifetime</span>
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#262626] border border-[#333333] text-[#A3A3A3] text-[10px] font-medium">
-                    <span>Free Plan</span>
-                  </div>
-                )}
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1F1F1F] text-[#888888] text-[10px] capitalize">
-                  <span>{currentUser?.provider === 'google' ? 'Akun Google' : 'Email/Password'}</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium">
+                  <Database className="w-3 h-3 text-emerald-400" />
+                  <span>Firestore Synced</span>
                 </div>
               </div>
             </div>
@@ -185,72 +144,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
               <span>{errorMessage}</span>
             </div>
           )}
-
-          {/* Membership Plan & 3D Model Access Card */}
-          <div className="mt-5 p-4 rounded-xl bg-[#171717] border border-[#2A2A2A]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                    currentUser?.plan === 'pro'
-                      ? 'bg-[#da0a2c]/20 text-[#FF6B81] border border-[#da0a2c]/40'
-                      : 'bg-[#262626] text-[#A3A3A3] border border-[#333333]'
-                  }`}
-                >
-                  <Crown className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-bold text-white">
-                      {currentUser?.plan === 'pro'
-                        ? 'Status Paket: PRO Lifetime'
-                        : 'Status Paket: Free Plan'}
-                    </h3>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        currentUser?.plan === 'pro'
-                          ? 'bg-[#da0a2c] text-white'
-                          : 'bg-[#2A2A2A] text-[#A3A3A3]'
-                      }`}
-                    >
-                      {currentUser?.plan === 'pro' ? '10/10 MODEL AKTIF' : '1/10 MODEL AKTIF (POLO V2)'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#8E8E8E] mt-0.5 leading-relaxed">
-                    {currentUser?.plan === 'pro'
-                      ? 'Anda memiliki akses penuh ke seluruh koleksi 10 model 3D jersey dan render resolusi tinggi.'
-                      : 'Paket Free hanya dapat mengakses 1 model: POLO V2. Untuk membuka seluruh koleksi 10 model 3D, silakan upgrade ke PRO.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 shrink-0">
-                {currentUser?.plan !== 'pro' && (
-                  <button
-                    type="button"
-                    onClick={() => setIsProModalOpen(true)}
-                    className="px-3.5 py-2 rounded-lg bg-[#da0a2c] hover:bg-[#b80825] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>Upgrade PRO via Xendit</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleTogglePlan}
-                  disabled={isTogglingPlan}
-                  className="px-3 py-2 rounded-lg bg-[#222222] hover:bg-[#2A2A2A] border border-[#333333] text-[#A3A3A3] hover:text-white text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Ganti status paket untuk menguji akses model"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isTogglingPlan ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Uji:</span>
-                  <span>{currentUser?.plan === 'pro' ? 'Set Free' : 'Set PRO'}</span>
-                </button>
-              </div>
-            </div>
-          </div>
 
           {/* Edit Form */}
           <form onSubmit={handleSave} className="mt-6 space-y-4">
@@ -294,6 +187,15 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
 
             {/* Read-only metadata */}
             <div className="p-3 bg-[#181818] border border-[#262626] rounded-xl text-xs space-y-2 text-[#888888]">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-amber-500" />
+                  Database Provider
+                </span>
+                <span className="text-white font-medium text-[11px]">
+                  Firebase Firestore ({isFirestoreConnected ? 'Connected' : 'Offline'})
+                </span>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Key className="w-3.5 h-3.5 text-[#595959]" />
@@ -351,15 +253,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
       {/* Bottom Footer */}
       <div className="w-full max-w-4xl flex items-center justify-between text-[11px] text-[#555555] z-10">
         <span>&copy; {new Date().getFullYear()} EDITOR SUITE &middot; 3D Jersey Studio</span>
-        <span>PostgreSQL User Profile</span>
+        <span className="flex items-center gap-1.5">
+          <Database className="w-3 h-3 text-amber-500" />
+          Firebase Firestore Database
+        </span>
       </div>
-
-      {/* Pro Upgrade Modal */}
-      <ProModal
-        isOpen={isProModalOpen}
-        onClose={() => setIsProModalOpen(false)}
-        onOpenLogin={() => onNavigate('/login')}
-      />
     </div>
   );
 };
