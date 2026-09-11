@@ -39,14 +39,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     try {
       if (isSignUp) {
         const name = email.split('@')[0] || 'Studio Designer';
-        const result = await register(name, email, password, password);
+        const result = await Promise.race([
+          register(name, email, password, password),
+          new Promise<{ success: boolean; error: string }>((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  success: false,
+                  error: 'Pendaftaran memakan waktu terlalu lama. Silakan coba lagi.',
+                }),
+              14000
+            )
+          ),
+        ]);
         if (result.success) {
           setIsVerificationPending(true);
         } else {
           setErrorMessage(result.error || 'Gagal mendaftar.');
         }
       } else {
-        const result = await login(email, password);
+        const result = await Promise.race([
+          login(email, password),
+          new Promise<{ success: boolean; error: string }>((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  success: false,
+                  error: 'Proses masuk memakan waktu terlalu lama. Periksa internet Anda.',
+                }),
+              12000
+            )
+          ),
+        ]);
         if (result.success) {
           setLoginSuccess(true);
           setTimeout(() => {
@@ -57,8 +81,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           setErrorMessage(result.error || 'Email atau password salah.');
         }
       }
-    } catch {
-      setErrorMessage('Terjadi kesalahan koneksi server.');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Terjadi kesalahan koneksi server.');
     } finally {
       setIsLoading(false);
     }

@@ -6,11 +6,8 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App instance safely (singleton pattern)
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// CRITICAL: Initialize Firestore safely with database ID or default
-export const db =
-  firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-    : getFirestore(app);
+// CRITICAL: Initialize Firestore strictly following SKILL.md specification
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 export const auth = getAuth(app);
 
@@ -24,24 +21,31 @@ let isConnected = false;
 export async function testFirestoreConnection(): Promise<boolean> {
   if (isConnectionTested) return isConnected;
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('the client is offline')), 2000)
+    );
+    await Promise.race([
+      getDocFromServer(doc(db, 'test', 'connection')),
+      timeoutPromise,
+    ]);
     isConnected = true;
     isConnectionTested = true;
     console.log('[Firebase] Successfully validated Firestore database connection.');
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    isConnectionTested = true;
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      isConnected = true;
+      console.log('[Firebase] Successfully validated Firestore database connection (online).');
+      return true;
+    }
+    isConnected = false;
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.warn(
         '[Firebase] Firestore status: Database sedang offline atau belum diaktifkan di Firebase Console (d-studio-e414d).'
       );
-      isConnected = false;
-    } else {
-      // Permission denied or not-found still proves network connectivity to the Firestore instance
-      isConnected = true;
-      console.log('[Firebase] Firestore reachable (database responded).');
     }
-    isConnectionTested = true;
-    return isConnected;
+    return false;
   }
 }
 

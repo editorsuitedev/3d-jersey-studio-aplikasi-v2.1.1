@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2, ExternalLink, Copy, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { FloatingInput } from './FloatingInput';
@@ -17,17 +17,31 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isEmailAlreadyInUse, setIsEmailAlreadyInUse] = useState(false);
+  const [isOperationNotAllowed, setIsOperationNotAllowed] = useState(false);
   const [verificationPendingEmail, setVerificationPendingEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
   const [copiedDomain, setCopiedDomain] = useState(false);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
     setErrorMessage(null);
+    setIsEmailAlreadyInUse(false);
+    setIsOperationNotAllowed(false);
     setResendNotice(null);
     setUnauthorizedDomain(null);
 
@@ -55,29 +69,81 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     setIsLoading(true);
 
     try {
-      const result = await register(name, email, password, confirmPassword);
+      const result = await Promise.race([
+        register(name, email, password, confirmPassword),
+        new Promise<{
+          success: boolean;
+          error?: string;
+          emailAlreadyInUse?: boolean;
+          operationNotAllowed?: boolean;
+          emailWarning?: string;
+        }>((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                success: false,
+                error: 'Pendaftaran membutuhkan waktu terlalu lama. Silakan periksa koneksi internet Anda dan coba lagi.',
+              }),
+            14000
+          )
+        ),
+      ]);
+
       if (!result.success) {
+        if (result.emailAlreadyInUse) {
+          setIsEmailAlreadyInUse(true);
+        }
+        if (result.operationNotAllowed) {
+          setIsOperationNotAllowed(true);
+        }
         setErrorMessage(result.error || 'Gagal mendaftar. Silakan coba lagi.');
       } else {
         // Enforce email verification requirement
         setVerificationPendingEmail(email.trim().toLowerCase());
+        if (result.emailWarning) {
+          setResendNotice(result.emailWarning);
+        }
       }
-    } catch {
-      setErrorMessage('Terjadi kesalahan koneksi server.');
+    } catch (err: any) {
+      console.error('[RegisterPage] Form submit exception:', err);
+      setErrorMessage(err?.message || 'Terjadi kesalahan koneksi server.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResend = async () => {
-    if (!verificationPendingEmail || isResending) return;
+  const handleResendExisting = async () => {
+    const targetEmail = email.trim().toLowerCase();
+    if (!targetEmail || isResending || resendCooldown > 0) return;
     setIsResending(true);
     setResendNotice(null);
 
     try {
-      const result = await resendVerification(verificationPendingEmail, password);
+      const result = await resendVerification(targetEmail, password || undefined);
       if (result.success) {
-        setResendNotice(`Email verifikasi baru berhasil dikirim ulang ke ${verificationPendingEmail}.`);
+        setResendCooldown(60);
+        setResendNotice(`Tautan verifikasi baru berhasil dikirim ke ${targetEmail}. Silakan cek kotak masuk atau folder spam email Anda.`);
+      } else {
+        setResendNotice(result.error || 'Gagal mengirim ulang email verifikasi.');
+      }
+    } catch {
+      setResendNotice('Terjadi kesalahan saat mengirim ulang email.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handleResend = async () => {
+    const targetEmail = verificationPendingEmail || email.trim().toLowerCase();
+    if (!targetEmail || isResending || resendCooldown > 0) return;
+    setIsResending(true);
+    setResendNotice(null);
+
+    try {
+      const result = await resendVerification(targetEmail, password || undefined);
+      if (result.success) {
+        setResendCooldown(60);
+        setResendNotice(`Email verifikasi baru berhasil dikirim ulang ke ${targetEmail}.`);
       } else {
         setResendNotice(result.error || 'Gagal mengirim ulang email verifikasi.');
       }
@@ -166,7 +232,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={handleResend}
-                disabled={isResending}
+                disabled={isResending || resendCooldown > 0}
                 className="w-full py-2.5 px-4 rounded-xl bg-[#181818] hover:bg-[#202020] border border-[#2E2E2E] text-xs font-medium text-[#A3A3A3] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isResending ? (
@@ -174,6 +240,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     <span>Mengirim ulang...</span>
                   </>
+                ) : resendCooldown > 0 ? (
+                  <span>Kirim Ulang ({resendCooldown}s)</span>
                 ) : (
                   <span>Kirim Ulang Email Verifikasi</span>
                 )}
@@ -263,8 +331,74 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               </div>
             )}
 
+            {/* Operation Not Allowed in Firebase Console Guide */}
+            {isOperationNotAllowed && (
+              <div className="mb-5 p-4 rounded-xl bg-[#1C1708] border border-amber-500/40 text-xs text-amber-200 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-white text-xs">Provider Email/Password Belum Aktif</h4>
+                    <p className="text-[#A3A3A3] text-[11px] leading-relaxed">
+                      Provider <strong className="text-white">Email/Password</strong> perlu diaktifkan di Firebase Console project Anda agar pendaftaran email dapat berjalan.
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href="https://console.firebase.google.com/project/d-studio-e414d/authentication/providers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500 text-black font-semibold text-xs hover:bg-amber-400 transition-colors w-full justify-center"
+                >
+                  <span>Buka Sign-in Providers di Firebase Console</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
+
+            {/* Email Already In Use Action Box */}
+            {isEmailAlreadyInUse && (
+              <div className="mb-5 p-4 rounded-xl bg-[#181818] border border-amber-500/30 text-xs text-amber-200 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-white text-xs">Email Ini Sudah Terdaftar</h4>
+                    <p className="text-[#A3A3A3] text-[11px] leading-relaxed">
+                      Email <strong className="text-white">{email}</strong> sudah memiliki akun. Jika Anda belum menerima email verifikasi, Anda dapat mengirimkannya ulang sekarang.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('/login')}
+                    className="flex-1 py-2 px-3 rounded-lg bg-white text-black font-semibold text-xs hover:bg-[#e0e0e0] transition-colors text-center cursor-pointer"
+                  >
+                    Masuk Sekarang
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendExisting}
+                    disabled={isResending || resendCooldown > 0}
+                    className="flex-1 py-2 px-3 rounded-lg bg-[#2A2A2A] hover:bg-[#333] border border-[#444] text-xs font-medium text-white transition-colors text-center cursor-pointer disabled:opacity-50"
+                  >
+                    {isResending ? 'Mengirim...' : resendCooldown > 0 ? `Tunggu (${resendCooldown}s)` : 'Kirim Ulang Link'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Resend Notice (if triggered from register page) */}
+            {resendNotice && !verificationPendingEmail && (
+              <div className="mb-5 p-3.5 rounded-xl bg-[#142A1E] border border-emerald-500/40 text-emerald-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{resendNotice}</span>
+              </div>
+            )}
+
             {/* Error Message */}
-            {errorMessage && (
+            {errorMessage && !isEmailAlreadyInUse && !isOperationNotAllowed && (
               <div className="mb-5 p-3.5 rounded-xl bg-[#2A1414] border border-[#EF4444]/40 text-[#FCA5A5] text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
                 <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{errorMessage}</span>

@@ -30,10 +30,16 @@ export function handleFirestoreError(
   error: unknown,
   operationType: OperationType,
   path: string | null
-): never {
+): void {
   const user = auth.currentUser;
+  const rawMsg = error instanceof Error ? error.message : String(error);
+  const isPermissionError =
+    (error as any)?.code === 'permission-denied' ||
+    rawMsg.toLowerCase().includes('permission') ||
+    rawMsg.toLowerCase().includes('insufficient');
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: rawMsg,
     authInfo: {
       userId: user?.uid ?? null,
       email: user?.email ?? null,
@@ -50,6 +56,11 @@ export function handleFirestoreError(
     path,
   };
 
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  if (isPermissionError) {
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    throw new Error(JSON.stringify(errInfo));
+  } else {
+    console.warn(`[Firebase] Firestore operation ${operationType} warning (${path || 'unknown'}):`, rawMsg);
+  }
 }
+

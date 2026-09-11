@@ -53,7 +53,7 @@ service cloud.firestore {
         (!('metalness' in data) || data.metalness is number) &&
         (!('fabricSheen' in data) || data.fabricSheen is number) &&
         (!('layersCount' in data) || data.layersCount is number) &&
-        (!('previewUrl' in data) || (data.previewUrl is string && data.previewUrl.size() <= 100000));
+        (!('previewUrl' in data) || (data.previewUrl is string && data.previewUrl.size() <= 500000));
     }
 
     // Test connection document for initial boot probe

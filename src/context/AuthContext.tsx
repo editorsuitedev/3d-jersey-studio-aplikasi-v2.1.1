@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile as firebaseUpdateProfile,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
@@ -20,7 +21,20 @@ interface AuthContextType {
   isFirestoreConnected: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; unverified?: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean; error?: string; unauthorizedDomain?: string; errorCode?: string }>;
-  register: (name: string, email: string, password: string, confirmPassword?: string) => Promise<{ success: boolean; requiresVerification?: boolean; error?: string }>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    confirmPassword?: string
+  ) => Promise<{
+    success: boolean;
+    requiresVerification?: boolean;
+    error?: string;
+    errorCode?: string;
+    emailAlreadyInUse?: boolean;
+    operationNotAllowed?: boolean;
+    emailWarning?: string;
+  }>;
   resendVerification: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string; avatar?: string }) => Promise<{ success: boolean; error?: string }>;
@@ -135,32 +149,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated_at: now,
       };
 
-      // Save or update user profile in Firestore collection `/users/{userId}`
+      // Save or update user profile in Firestore collection `/users/{userId}` non-blocking
       try {
         const userDocRef = doc(db, 'users', fbUser.uid);
-        const existingDoc = await getDoc(userDocRef);
-        if (!existingDoc.exists()) {
-          await setDoc(userDocRef, {
-            id: fbUser.uid,
-            name: userProfile.name,
-            email: userProfile.email,
-            avatar: userProfile.avatar || '',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-        } else {
-          await setDoc(
+        Promise.race([
+          setDoc(
             userDocRef,
             {
+              id: fbUser.uid,
               name: userProfile.name,
               email: userProfile.email,
               avatar: userProfile.avatar || '',
               updatedAt: serverTimestamp(),
             },
             { merge: true }
-          );
-        }
-        console.log('[Firebase Database] Successfully saved Google user profile in Firestore.');
+          ),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]).catch((firestoreErr) => {
+          console.warn('[Firebase Database] Note saving Google user profile to Firestore:', firestoreErr);
+        });
       } catch (firestoreErr) {
         console.warn('[Firebase Database] Note saving Google user profile to Firestore:', firestoreErr);
       }
@@ -246,14 +253,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      // 3. Fetch user profile from Firestore if available
+      // 3. Fetch user profile from Firestore if available (fast timeout so offline Firestore never stalls login)
       let userName = fbUser.displayName || email.split('@')[0];
       let userAvatar = fbUser.photoURL || null;
 
       try {
         const userDocRef = doc(db, 'users', fbUser.uid);
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
+        const docSnap = await Promise.race([
+          getDoc(userDocRef),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+        ]);
+        if (docSnap && docSnap.exists()) {
           const data = docSnap.data();
           if (data.name) userName = data.name;
           if (data.avatar) userAvatar = data.avatar;
@@ -306,99 +316,243 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     password: string,
     confirmPassword?: string
-  ): Promise<{ success: boolean; requiresVerification?: boolean; error?: string }> => {
+  ): Promise<{
+    success: boolean;
+    requiresVerification?: boolean;
+    error?: string;
+    errorCode?: string;
+    emailAlreadyInUse?: boolean;
+    operationNotAllowed?: boolean;
+    emailWarning?: string;
+  }> => {
     if (confirmPassword && password !== confirmPassword) {
       return { success: false, error: 'Konfirmasi kata sandi tidak cocok.' };
     }
 
-    try {
-      // 1. Create account in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      const fbUser = userCredential.user;
+    const normalizedEmail = email.trim().toLowerCase();
 
-      // 2. Update display name in Firebase Auth
+    try {
+      console.log('[Auth] Step 1: Initiating user creation in Firebase Authentication for:', normalizedEmail);
+
+      // 1. Create account in Firebase Authentication with strict timeout guard
+      const userCredential = await Promise.race([
+        createUserWithEmailAndPassword(auth, normalizedEmail, password),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject({
+                code: 'auth/timeout',
+                message: 'Waktu koneksi ke server Firebase habis. Periksa koneksi internet Anda dan coba lagi.',
+              }),
+            12000
+          )
+        ),
+      ]);
+      const fbUser = userCredential.user;
+      console.log('[Auth] Step 1 complete: User created in Firebase with UID:', fbUser.uid);
+
+      // 2. Update display name in Firebase Auth (safe timeout, non-blocking)
       try {
-        await firebaseUpdateProfile(fbUser, { displayName: name.trim() });
+        await Promise.race([
+          firebaseUpdateProfile(fbUser, { displayName: name.trim() }),
+          new Promise((resolve) => setTimeout(resolve, 2000)),
+        ]);
+        console.log('[Auth] Step 2 complete: Display name updated.');
       } catch (profErr) {
         console.warn('[Firebase Auth] Display name update note:', profErr);
       }
 
-      // 3. Send email verification to the registered user
+      // 3. Send email verification to the registered user (safe timeout guard)
+      let emailWarning: string | undefined = undefined;
       try {
-        await sendEmailVerification(fbUser);
-        console.log('[Firebase Auth] Verification email successfully sent to:', email);
-      } catch (emailErr) {
-        console.warn('[Firebase Auth] Verification email note:', emailErr);
+        console.log('[Auth] Step 3: Sending email verification to:', normalizedEmail);
+        await Promise.race([
+          sendEmailVerification(fbUser),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+        ]);
+        console.log('[Firebase Auth] Verification email successfully sent to:', normalizedEmail);
+      } catch (emailErr: any) {
+        console.warn('[Firebase Auth] Verification email dispatch note:', emailErr);
+        if (emailErr?.message === 'timeout') {
+          emailWarning = 'Email verifikasi sedang dikirim oleh server Firebase. Cek inbox dalam beberapa saat.';
+        } else if (emailErr?.code === 'auth/too-many-requests') {
+          emailWarning = 'Terlalu banyak permintaan kirim email. Harap tunggu beberapa saat untuk pengiriman ulang.';
+        } else {
+          emailWarning = emailErr?.message || 'Gagal mengirim email verifikasi otomatis.';
+        }
       }
 
-      // 4. Record profile document in Firestore collection `users`
+      // 4. Record profile document in Firestore collection `users` NON-BLOCKING (never hang if Firestore is offline)
       try {
         const userDocRef = doc(db, 'users', fbUser.uid);
-        await setDoc(
-          userDocRef,
-          {
-            id: fbUser.uid,
-            name: name.trim(),
-            email: email.trim().toLowerCase(),
-            avatar: '',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
+        Promise.race([
+          setDoc(
+            userDocRef,
+            {
+              id: fbUser.uid,
+              name: name.trim(),
+              email: normalizedEmail,
+              avatar: '',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          ),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]).catch((fsErr) => {
+          console.warn('[Firebase Auth] Saving user profile to Firestore note:', fsErr);
+        });
+        console.log('[Auth] Step 4: User profile queued for Firestore.');
       } catch (fsErr) {
         console.warn('[Firebase Auth] Saving user profile to Firestore note:', fsErr);
       }
 
-      // 5. CRITICAL: Do NOT give immediate login access! Force sign out and require verification.
-      await firebaseSignOut(auth);
+      // 5. CRITICAL: Force sign out so unverified user does not get logged in prematurely
+      try {
+        await Promise.race([
+          firebaseSignOut(auth),
+          new Promise((resolve) => setTimeout(resolve, 2000)),
+        ]);
+      } catch (signOutErr) {
+        console.warn('[Firebase Auth] Sign out note:', signOutErr);
+      }
       setCurrentUser(null);
       localStorage.removeItem(TOKEN_KEY);
+      console.log('[Auth] Step 5 complete: Session sanitized.');
 
-      // Sync backend session record without logging in
+      // Sync backend user record without setting login cookies (background)
       fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, confirmPassword }),
+        body: JSON.stringify({ name: name.trim(), email: normalizedEmail, password }),
       }).catch((e) => console.warn('[Auth] Server sync note:', e));
 
-      return { success: true, requiresVerification: true };
+      return {
+        success: true,
+        requiresVerification: true,
+        emailWarning,
+      };
     } catch (err: any) {
       console.error('[Firebase Auth] Registration error:', err);
       const code = err?.code;
+
+      if (code === 'auth/timeout') {
+        return {
+          success: false,
+          errorCode: code,
+          error: err?.message || 'Waktu koneksi ke server Firebase habis. Periksa koneksi internet Anda dan coba lagi.',
+        };
+      }
       if (code === 'auth/operation-not-allowed') {
         return {
           success: false,
-          error: 'Provider Email/Password belum diaktifkan di Firebase Console Anda (d-studio-e414d). Buka Firebase Console > Authentication > Sign-in method, aktifkan Email/Password, lalu simpan.',
+          operationNotAllowed: true,
+          errorCode: code,
+          error: 'Metode Email/Password belum diaktifkan di Firebase Console project d-studio-e414d. Buka Firebase Console > Authentication > Sign-in method, aktifkan Email/Password, lalu simpan.',
         };
       }
       if (code === 'auth/email-already-in-use') {
-        return { success: false, error: 'Email ini sudah terdaftar di Firebase. Silakan masuk atau gunakan email lain.' };
+        return {
+          success: false,
+          emailAlreadyInUse: true,
+          errorCode: code,
+          error: 'Alamat email ini sudah terdaftar. Silakan masuk atau gunakan tombol kirim ulang verifikasi.',
+        };
       }
       if (code === 'auth/weak-password') {
-        return { success: false, error: 'Kata sandi terlalu lemah. Gunakan minimal 6 karakter.' };
+        return {
+          success: false,
+          errorCode: code,
+          error: 'Kata sandi terlalu lemah. Gunakan minimal 6 karakter kombinasi huruf dan angka.',
+        };
       }
       if (code === 'auth/invalid-email') {
-        return { success: false, error: 'Format email tidak valid.' };
+        return {
+          success: false,
+          errorCode: code,
+          error: 'Format email tidak valid. Periksa kembali penulisan alamat email Anda.',
+        };
       }
-      return { success: false, error: err?.message || 'Gagal mendaftar akun baru ke Firebase.' };
+      if (code === 'auth/network-request-failed') {
+        return {
+          success: false,
+          errorCode: code,
+          error: 'Gagal terhubung ke server Firebase. Periksa koneksi internet Anda dan coba lagi.',
+        };
+      }
+      if (code === 'auth/too-many-requests') {
+        return {
+          success: false,
+          errorCode: code,
+          error: 'Terlalu banyak permintaan dalam waktu singkat. Mohon tunggu beberapa saat sebelum mencoba lagi.',
+        };
+      }
+
+      return {
+        success: false,
+        errorCode: code,
+        error: err?.message ? `Gagal mendaftar: ${err.message}` : 'Gagal mendaftar akun baru ke Firebase.',
+      };
     }
   };
 
-  const resendVerification = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+  const resendVerification = async (
+    email: string,
+    password?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      if (password) {
-        const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
-        await sendEmailVerification(userCred.user);
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Client-side rate-limit protection (cooldown 60 seconds)
+      const lastSentKey = `last_resend_verification_${normalizedEmail}`;
+      const lastSentTime = Number(sessionStorage.getItem(lastSentKey) || 0);
+      const elapsedSeconds = Math.floor((Date.now() - lastSentTime) / 1000);
+      if (elapsedSeconds < 60) {
+        const remaining = 60 - elapsedSeconds;
+        return {
+          success: false,
+          error: `Mohon tunggu ${remaining} detik sebelum meminta pengiriman email verifikasi lagi.`,
+        };
+      }
+
+      // Case A: If user is actively signed into Firebase Auth
+      if (auth.currentUser && auth.currentUser.email?.toLowerCase() === normalizedEmail) {
+        await sendEmailVerification(auth.currentUser);
+        sessionStorage.setItem(lastSentKey, Date.now().toString());
         await firebaseSignOut(auth);
         return { success: true };
       }
-      return {
-        success: false,
-        error: 'Masukkan kata sandi Anda untuk mengirim ulang email verifikasi.',
-      };
+
+      // Case B: If password is provided, sign in temporarily to dispatch email verification
+      if (password) {
+        const userCred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+        await sendEmailVerification(userCred.user);
+        sessionStorage.setItem(lastSentKey, Date.now().toString());
+        await firebaseSignOut(auth);
+        return { success: true };
+      }
+
+      // Case C: If password is not in memory (e.g. page refresh), dispatch reset/verification email
+      await sendPasswordResetEmail(auth, normalizedEmail);
+      sessionStorage.setItem(lastSentKey, Date.now().toString());
+      return { success: true };
     } catch (err: any) {
-      console.error('[Firebase Auth] Resend verification error:', err);
+      const code = err?.code;
+      if (code === 'auth/too-many-requests') {
+        console.warn('[Firebase Auth] Resend verification rate limit:', err?.message || err);
+        return {
+          success: false,
+          error:
+            'Terlalu banyak permintaan pengiriman email dalam waktu singkat. Server Firebase membatasi pengiriman sementara demi keamanan. Silakan tunggu 2-3 menit sebelum mencoba lagi.',
+        };
+      }
+      console.warn('[Firebase Auth] Resend verification note:', err?.message || err);
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        return { success: false, error: 'Password tidak cocok untuk mengirim ulang verifikasi.' };
+      }
+      if (code === 'auth/user-not-found') {
+        return { success: false, error: 'Akun dengan email ini tidak ditemukan di Firebase.' };
+      }
       return { success: false, error: err?.message || 'Gagal mengirim ulang email verifikasi.' };
     }
   };

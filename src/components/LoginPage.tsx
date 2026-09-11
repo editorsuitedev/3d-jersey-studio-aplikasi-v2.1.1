@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, ExternalLink, Copy, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { FloatingInput } from './FloatingInput';
@@ -17,8 +17,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const [isUnverified, setIsUnverified] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
   const [copiedDomain, setCopiedDomain] = useState(false);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +58,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   };
 
   const handleResend = async () => {
-    if (!email || isResending) return;
+    if (!email || isResending || resendCooldown > 0) return;
     setIsResending(true);
     setResendNotice(null);
 
     try {
       const result = await resendVerification(email, password);
       if (result.success) {
+        setResendCooldown(60);
         setResendNotice(`Tautan verifikasi baru berhasil dikirim ke ${email}. Silakan cek email Anda.`);
       } else {
         setResendNotice(result.error || 'Gagal mengirim ulang email verifikasi.');
@@ -196,7 +207,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                       <button
                         type="button"
                         onClick={handleResend}
-                        disabled={isResending}
+                        disabled={isResending || resendCooldown > 0}
                         className="w-fit py-1.5 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-200 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         {isResending ? (
@@ -204,6 +215,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                             <div className="w-3 h-3 border-2 border-amber-300/30 border-t-amber-300 rounded-full animate-spin" />
                             <span>Mengirim ulang...</span>
                           </>
+                        ) : resendCooldown > 0 ? (
+                          <span>Kirim Ulang ({resendCooldown}s)</span>
                         ) : (
                           <span>Kirim Ulang Email Verifikasi</span>
                         )}

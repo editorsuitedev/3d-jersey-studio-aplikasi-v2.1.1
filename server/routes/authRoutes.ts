@@ -80,14 +80,11 @@ authRouter.post('/register', async (req, res): Promise<void> => {
       password,
     });
 
-    const token = generateToken({ id: user.id, email: user.email });
-    setAuthCookie(res, token);
-
+    // Do not set auth cookie on registration because email verification is required
     res.status(201).json({
       success: true,
-      message: 'Registrasi berhasil',
+      message: 'Registrasi berhasil. Silakan verifikasi email Anda sebelum masuk.',
       user,
-      token,
     });
   } catch (error) {
     console.error('Error during registration:', error);
