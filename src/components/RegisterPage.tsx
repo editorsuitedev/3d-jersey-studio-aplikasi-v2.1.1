@@ -8,7 +8,7 @@ interface RegisterPageProps {
 }
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
-  const { register, loginWithGoogle, resendVerification } = useAuth();
+  const { register, loginWithGoogle, loginAsGuest, resendVerification, oauthNotice, clearOauthNotice } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -174,10 +174,15 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
         onNavigate('/studio');
       }
     } catch {
-      setErrorMessage('Gagal menghubungkan ke Google Firebase Auth.');
+      setErrorMessage('Gagal menghubungkan ke layanan autentikasi Google.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    onNavigate('/studio');
   };
 
   return (
@@ -208,7 +213,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
             <div className="p-3.5 rounded-xl bg-[#161616] border border-[#262626] text-left text-xs text-[#888] space-y-1.5 mb-5">
               <p className="text-[#ECECEC] font-medium text-xs">Langkah berikutnya:</p>
               <p>1. Cek Inbox atau folder Spam email Anda.</p>
-              <p>2. Klik tautan konfirmasi dari Firebase.</p>
+              <p>2. Klik tautan konfirmasi di email Anda.</p>
               <p>3. Masuk kembali menggunakan email dan password Anda.</p>
             </div>
 
@@ -257,6 +262,16 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               >
                 Daftar dengan email lain
               </button>
+
+              <div className="pt-3 border-t border-[#242424] mt-2">
+                <button
+                  type="button"
+                  onClick={handleGuestLogin}
+                  className="w-full py-2 px-3 rounded-lg bg-[#181818] hover:bg-[#222] border border-[#2E2E2E] text-xs font-medium text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
+                >
+                  Lanjut Desain sebagai Tamu Sementara
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -279,15 +294,15 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               </p>
             </div>
 
-            {/* Unauthorized Domain Guide (Firebase Console Setup) */}
+            {/* Unauthorized Domain Guide */}
             {unauthorizedDomain && (
               <div className="mb-5 p-4 rounded-xl bg-[#1C1708] border border-amber-500/40 text-xs text-amber-200 space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <h4 className="font-semibold text-white text-xs">Domain Belum Diizinkan</h4>
+                    <h4 className="font-semibold text-white text-xs">Domain Redirect Belum Dikonfigurasi</h4>
                     <p className="text-[#A3A3A3] text-[11px] leading-relaxed">
-                      Tambahkan domain ini ke daftar <strong className="text-white">Authorized Domains</strong> di Firebase Console.
+                      Tambahkan domain ini ke daftar <strong className="text-white">Redirect URLs</strong> di Supabase Console (Authentication &gt; URL Configuration).
                     </p>
                   </div>
                 </div>
@@ -320,37 +335,37 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 </div>
 
                 <a
-                  href="https://console.firebase.google.com/project/d-studio-e414d/authentication/settings"
+                  href="https://supabase.com/dashboard"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500 text-black font-semibold text-xs hover:bg-amber-400 transition-colors w-full justify-center"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition-colors w-full justify-center"
                 >
-                  <span>Buka Pengaturan Firebase Console</span>
+                  <span>Buka Supabase Dashboard</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
             )}
 
-            {/* Operation Not Allowed in Firebase Console Guide */}
+            {/* Operation Not Allowed Guide */}
             {isOperationNotAllowed && (
               <div className="mb-5 p-4 rounded-xl bg-[#1C1708] border border-amber-500/40 text-xs text-amber-200 space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <h4 className="font-semibold text-white text-xs">Provider Email/Password Belum Aktif</h4>
+                    <h4 className="font-semibold text-white text-xs">Autentikasi Email Belum Aktif</h4>
                     <p className="text-[#A3A3A3] text-[11px] leading-relaxed">
-                      Provider <strong className="text-white">Email/Password</strong> perlu diaktifkan di Firebase Console project Anda agar pendaftaran email dapat berjalan.
+                      Provider <strong className="text-white">Email</strong> perlu diaktifkan di Supabase Auth settings project Anda.
                     </p>
                   </div>
                 </div>
 
                 <a
-                  href="https://console.firebase.google.com/project/d-studio-e414d/authentication/providers"
+                  href="https://supabase.com/dashboard"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500 text-black font-semibold text-xs hover:bg-amber-400 transition-colors w-full justify-center"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition-colors w-full justify-center"
                 >
-                  <span>Buka Sign-in Providers di Firebase Console</span>
+                  <span>Buka Supabase Auth Dashboard</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
@@ -402,6 +417,30 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <div className="mb-5 p-3.5 rounded-xl bg-[#2A1414] border border-[#EF4444]/40 text-[#FCA5A5] text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
                 <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+            )}
+
+            {/* OAuth Notice Banner */}
+            {oauthNotice && (
+              <div className="mb-5 p-3.5 rounded-xl bg-[#2A1D0D] border border-amber-500/40 text-xs text-amber-200 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-white text-xs">Pemberitahuan Pendaftaran</h4>
+                      <p className="text-[#A3A3A3] text-[11px] mt-0.5 leading-relaxed">
+                        {oauthNotice}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearOauthNotice}
+                    className="text-[#888] hover:text-white text-xs px-1 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             )}
 
@@ -545,6 +584,17 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   </>
                 )}
               </button>
+
+              {/* Guest Mode Option */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleGuestLogin}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#161616] hover:bg-[#202020] border border-[#2B2B2B] hover:border-[#404040] text-xs font-medium text-[#A3A3A3] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Lanjut sebagai Tamu (Mode Desain Cepat)</span>
+                </button>
+              </div>
             </form>
 
             {/* Switch to Login */}

@@ -1,15 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import {
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  limit,
-} from 'firebase/firestore';
-import { getFirestoreDb, memoryStore, UserRecord } from '../database/db';
+import { memoryStore, UserRecord } from '../database/db';
 
 export interface SafeUser {
   id: string;
@@ -33,60 +24,10 @@ export function toSafeUser(user: UserRecord): SafeUser {
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const normalizedEmail = email.trim().toLowerCase();
-  const db = getFirestoreDb();
-
-  if (db) {
-    try {
-      const q = query(
-        collection(db, 'users'),
-        where('email', '==', normalizedEmail),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const docData = snapshot.docs[0].data();
-        return {
-          id: snapshot.docs[0].id,
-          email: docData.email,
-          name: docData.name,
-          password_hash: docData.password_hash || docData.passwordHash || '',
-          avatar: docData.avatar || null,
-          created_at: docData.created_at || docData.createdAt || new Date().toISOString(),
-          updated_at: docData.updated_at || docData.updatedAt || new Date().toISOString(),
-        };
-      }
-    } catch (err) {
-      console.warn('[Firestore] Notice finding user by email, using fallback cache:', (err as Error).message);
-    }
-  }
-
   return memoryStore.findByEmail(normalizedEmail);
 }
 
 export async function findUserById(id: string): Promise<UserRecord | null> {
-  const db = getFirestoreDb();
-
-  if (db) {
-    try {
-      const userRef = doc(db, 'users', id);
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists()) {
-        const docData = userDoc.data();
-        return {
-          id: userDoc.id,
-          email: docData.email,
-          name: docData.name,
-          password_hash: docData.password_hash || docData.passwordHash || '',
-          avatar: docData.avatar || null,
-          created_at: docData.created_at || docData.createdAt || new Date().toISOString(),
-          updated_at: docData.updated_at || docData.updatedAt || new Date().toISOString(),
-        };
-      }
-    } catch (err) {
-      console.warn('[Firestore] Notice finding user by ID, using fallback cache:', (err as Error).message);
-    }
-  }
-
   return memoryStore.findById(id);
 }
 
@@ -102,7 +43,6 @@ export async function createUser(data: {
   const passwordHash = await bcrypt.hash(data.password, saltRounds);
   const id = data.customId || crypto.randomUUID();
   const now = new Date().toISOString();
-  const db = getFirestoreDb();
 
   const record: UserRecord = {
     id,

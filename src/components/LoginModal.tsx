@@ -243,9 +243,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-white text-xs">Domain Belum Diizinkan</h4>
+                      <h4 className="font-semibold text-white text-xs">URL Redirect Belum Diizinkan</h4>
                       <p className="text-[#A3A3A3] text-[11px] mt-0.5 leading-relaxed">
-                        Tambahkan domain aplikasi ini ke daftar Authorized Domains di Firebase Console (d-studio-e414d).
+                        Tambahkan domain aplikasi ini ke daftar Redirect URLs di Dashboard Supabase Auth.
                       </p>
                     </div>
                   </div>
@@ -268,12 +268,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
 
                   <a
-                    href="https://console.firebase.google.com/project/d-studio-e414d/authentication/settings"
+                    href="https://supabase.com/dashboard"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-black font-semibold text-[11px] hover:bg-amber-400 transition-colors w-full justify-center"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-semibold text-[11px] hover:bg-emerald-400 transition-colors w-full justify-center"
                   >
-                    <span>Buka Firebase Console Settings</span>
+                    <span>Buka Supabase Dashboard</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>

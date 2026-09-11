@@ -24,7 +24,7 @@ import { HelpModal } from './components/HelpModal';
 import { LoginModal } from './components/LoginModal';
 import { ProModal } from './components/ProModal';
 import { SavedJerseysModal } from './components/SavedJerseysModal';
-import { SavedJerseyProject } from './services/firestoreJerseyService';
+import { SavedJerseyProject } from './services/supabaseJerseyService';
 import { LoginPage } from './components/LoginPage';
 import { RegisterPage } from './components/RegisterPage';
 import { AccountPage } from './components/AccountPage';

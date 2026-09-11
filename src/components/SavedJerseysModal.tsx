@@ -9,16 +9,14 @@ import {
   AlertCircle,
   Database,
   Shirt,
-  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../lib/firebase';
 import {
   SavedJerseyProject,
-  saveJerseyToFirestore,
+  saveJerseyToSupabase,
   subscribeUserJerseys,
-  deleteJerseyFromFirestore,
-} from '../services/firestoreJerseyService';
+  deleteJerseyFromSupabase,
+} from '../services/supabaseJerseyService';
 import { MockupSettings, LightingSettings, CameraSettings, TransformSettings } from '../types';
 
 interface SavedJerseysModalProps {
@@ -40,42 +38,43 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
   currentTransform,
   onLoadProject,
 }) => {
-  const { currentUser, isFirestoreConnected, loginWithGoogle } = useAuth();
+  const { currentUser, isDatabaseConnected, loginWithGoogle } = useAuth();
   const [projects, setProjects] = useState<SavedJerseyProject[]>([]);
   const [projectName, setProjectName] = useState('Desain Jersey Kustom');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('Desain berhasil disimpan!');
   const [statusError, setStatusError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const currentFbUser = auth.currentUser;
+  const effectiveUserId = currentUser?.id;
 
-  // Real-time Firestore sync
+  // Real-time Supabase sync
   useEffect(() => {
-    if (!isOpen || !currentFbUser?.uid) {
+    if (!isOpen || !effectiveUserId) {
       setProjects([]);
       return;
     }
 
     const unsubscribe = subscribeUserJerseys(
-      currentFbUser.uid,
+      effectiveUserId,
       (items) => {
         setProjects(items);
       },
       (err) => {
-        console.warn('Firestore subscription notice:', err);
+        console.warn('[Supabase] Subscription notice:', err);
       }
     );
 
     return () => unsubscribe();
-  }, [isOpen, currentFbUser?.uid]);
+  }, [isOpen, effectiveUserId]);
 
   if (!isOpen) return null;
 
   const handleSaveCurrent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentFbUser?.uid) {
-      setStatusError('Silakan login dengan akun Google terlebih dahulu untuk menyimpan ke database Firebase.');
+    if (!effectiveUserId) {
+      setStatusError('Silakan login atau masuk sebagai Tamu terlebih dahulu untuk menyimpan desain.');
       return;
     }
     if (isSaving) return;
@@ -85,7 +84,7 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
     setSaveSuccess(false);
 
     try {
-      await saveJerseyToFirestore(currentFbUser.uid, {
+      const res = await saveJerseyToSupabase(effectiveUserId, {
         name: projectName.trim() || 'Desain Jersey Kustom',
         mockup: currentMockup,
         lighting: currentLighting,
@@ -93,22 +92,28 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
         transform: currentTransform,
       });
 
+      if (res.isLocal) {
+        setSaveNotice(res.warning || 'Desain berhasil disimpan di penyimpanan browser lokal!');
+      } else {
+        setSaveNotice('Desain berhasil disimpan ke Supabase Cloud!');
+      }
+
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err: any) {
-      setStatusError(err.message || 'Gagal menyimpan ke Firestore.');
+      setStatusError(err.message || 'Gagal menyimpan ke Supabase.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (jerseyId: string) => {
-    if (!currentFbUser?.uid || deletingId) return;
+    if (!effectiveUserId || deletingId) return;
     setDeletingId(jerseyId);
     try {
-      await deleteJerseyFromFirestore(currentFbUser.uid, jerseyId);
+      await deleteJerseyFromSupabase(effectiveUserId, jerseyId);
     } catch (err: any) {
-      setStatusError(err.message || 'Gagal menghapus proyek dari Firestore.');
+      setStatusError(err.message || 'Gagal menghapus proyek dari Supabase.');
     } finally {
       setDeletingId(null);
     }
@@ -120,15 +125,15 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-[#222222] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
               <Database className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                Firebase Firestore Projects
+                Supabase Jersey Projects
               </h2>
               <p className="text-[11px] text-[#737373]">
-                Simpan dan kelola desain jersey di cloud database Firebase
+                Simpan dan kelola desain jersey di cloud database Supabase
               </p>
             </div>
           </div>
@@ -153,17 +158,17 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
           {saveSuccess && (
             <div className="p-3 rounded-xl bg-[#142A19] border border-[#22C55E]/40 text-[#86EFAC] text-xs flex items-center gap-2">
               <Check className="w-4 h-4 text-[#22C55E] shrink-0" />
-              <span>Desain berhasil disimpan ke Firebase Firestore!</span>
+              <span>{saveNotice}</span>
             </div>
           )}
 
-          {/* Notice if not signed in with Firebase Auth */}
-          {!currentFbUser && (
+          {/* Notice if not signed in */}
+          {!currentUser && (
             <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-[#333333] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <Database className="w-4 h-4 text-[#da0a2c] shrink-0" />
+                <Database className="w-4 h-4 text-emerald-400 shrink-0" />
                 <p className="text-xs text-[#A3A3A3]">
-                  Masuk dengan Google untuk mengaktifkan sinkronisasi database cloud Firestore.
+                  Masuk ke akun Anda untuk mengaktifkan sinkronisasi database cloud Supabase.
                 </p>
               </div>
               <button
@@ -191,8 +196,8 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
           {/* Form to Save Current Design */}
           <div className="p-4 rounded-xl bg-[#181818] border border-[#262626]">
             <h3 className="text-xs font-semibold text-white uppercase tracking-wider mb-2.5 flex items-center gap-2">
-              <Save className="w-3.5 h-3.5 text-[#da0a2c]" />
-              <span>Simpan Desain Saat Ini ke Cloud</span>
+              <Save className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Simpan Desain Jersey</span>
             </h3>
 
             <form onSubmit={handleSaveCurrent} className="flex flex-col sm:flex-row gap-2.5">
@@ -201,12 +206,12 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="Nama desain jersey..."
-                disabled={isSaving || !currentFbUser}
+                disabled={isSaving || !effectiveUserId}
                 className="flex-1 bg-[#121212] border border-[#2E2E2E] focus:border-[#555] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-[#555] focus:outline-none transition-colors disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={isSaving || !currentFbUser}
+                disabled={isSaving || !effectiveUserId}
                 className="px-4 py-2 rounded-xl bg-[#262626] border border-[#595959] hover:bg-[#333] hover:border-white text-xs font-semibold text-white transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50 active:scale-98"
               >
                 {isSaving ? (
@@ -217,19 +222,19 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
                 ) : (
                   <>
                     <Cloud className="w-3.5 h-3.5" />
-                    <span>Simpan ke Firebase</span>
+                    <span>Simpan Desain</span>
                   </>
                 )}
               </button>
             </form>
             {!currentUser && (
               <p className="text-[11px] text-amber-400 mt-2">
-                * Masuk ke akun Anda terlebih dahulu untuk mengaktifkan penyimpanan cloud.
+                * Masuk ke akun Anda terlebih dahulu untuk mengaktifkan sinkronisasi cloud.
               </p>
             )}
           </div>
 
-          {/* Saved Projects in Firestore */}
+          {/* Saved Projects in Supabase */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-semibold text-[#A3A3A3] uppercase tracking-wider">
@@ -237,16 +242,16 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
               </h3>
               <span className="text-[11px] text-emerald-400 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Firestore Realtime
+                Supabase Realtime
               </span>
             </div>
 
             {projects.length === 0 ? (
               <div className="text-center py-8 px-4 rounded-xl border border-dashed border-[#262626] text-[#666]">
                 <Shirt className="w-8 h-8 mx-auto mb-2 text-[#444]" />
-                <p className="text-xs">Belum ada desain jersey yang disimpan di Firebase.</p>
+                <p className="text-xs">Belum ada desain jersey yang disimpan.</p>
                 <p className="text-[11px] text-[#555] mt-1">
-                  Beri nama pada form di atas dan klik &apos;Simpan ke Firebase&apos;.
+                  Beri nama pada form di atas dan klik &apos;Simpan ke Supabase&apos;.
                 </p>
               </div>
             ) : (
@@ -298,7 +303,7 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
                         onClick={() => handleDelete(p.id)}
                         disabled={deletingId === p.id}
                         className="p-1.5 rounded-lg text-[#777] hover:text-[#EF4444] hover:bg-[#2A1414] transition-colors cursor-pointer"
-                        title="Hapus dari Firebase"
+                        title="Hapus dari Supabase"
                       >
                         {deletingId === p.id ? (
                           <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
@@ -317,8 +322,8 @@ export const SavedJerseysModal: React.FC<SavedJerseysModalProps> = ({
         {/* Footer */}
         <div className="p-3 sm:p-4 border-t border-[#222222] bg-[#0E0E0E] flex items-center justify-between text-[11px] text-[#666]">
           <span className="flex items-center gap-1.5">
-            <Database className="w-3 h-3 text-amber-500" />
-            Project: <span className="text-white font-mono">hopeful-weaver-n4r4b</span>
+            <Database className="w-3 h-3 text-emerald-400" />
+            Database: <span className="text-white font-mono">{isDatabaseConnected ? 'Supabase Connected' : 'Supabase (Local Mode)'}</span>
           </span>
           <button
             onClick={onClose}
