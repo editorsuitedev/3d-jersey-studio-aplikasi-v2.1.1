@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Privacy Policy — Editor Suite</title>
+    <meta name="description" content="Privacy Policy for Editor Suite. Learn how Editor Suite collects, uses, stores, and protects user information.">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #000000;
+            --card: #141414;
+            --card-hover: #181818;
+            --text: #f5f5f5;
+            --muted: #a1a1a1;
+            --border: #252525;
+            --accent: #db0b2b;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            width: min(100% - 40px, 900px);
+            margin: 0 auto;
+        }
+
+        /* Header */
+
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 28px 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-mark {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .back-link {
+            color: var(--muted);
+            font-size: 14px;
+            transition: color .2s ease;
+        }
+
+        .back-link:hover {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* Hero */
+
+        .hero {
+            padding: 90px 0 55px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        h1 {
+            font-size: clamp(42px, 7vw, 72px);
+            line-height: 1.02;
+            letter-spacing: -3px;
+            margin-bottom: 20px;
+            font-weight: 750;
+        }
+
+        .hero-description {
+            max-width: 700px;
+            color: var(--muted);
+            font-size: 18px;
+        }
+
+        .updated {
+            display: inline-block;
+            margin-top: 25px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        /* Content */
+
+        main {
+            padding-bottom: 100px;
+        }
+
+        .content {
+            display: grid;
+            gap: 18px;
+        }
+
+        .section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 32px;
+            transition: background .2s ease, border-color .2s ease;
+        }
+
+        .section:hover {
+            background: var(--card-hover);
+            border-color: #303030;
+        }
+
+        .section-number {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 23px;
+            line-height: 1.3;
+            letter-spacing: -0.5px;
+            margin-bottom: 15px;
+        }
+
+        p {
+            color: #b7b7b7;
+            font-size: 15px;
+            margin-bottom: 14px;
+        }
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+
+        ul {
+            padding-left: 22px;
+            margin-top: 10px;
+        }
+
+        li {
+            color: #b7b7b7;
+            font-size: 15px;
+            margin-bottom: 9px;
+            padding-left: 4px;
+        }
+
+        li::marker {
+            color: var(--accent);
+        }
+
+        /* Contact */
+
+        .contact {
+            border-color: rgba(219, 11, 43, .35);
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(219, 11, 43, .08),
+                    rgba(20, 20, 20, 1) 55%
+                );
+        }
+
+        .contact-email {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            padding: 12px 16px;
+            background: #0c0c0c;
+            border: 1px solid #2b2b2b;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        /* Footer */
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 35px 0;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .footer-brand {
+            color: #aaa;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+
+        @media (max-width: 640px) {
+            .container {
+                width: min(100% - 28px, 900px);
+            }
+
+            header {
+                padding: 20px 0;
+            }
+
+            .back-link {
+                display: none;
+            }
+
+            .hero {
+                padding: 65px 0 40px;
+            }
+
+            h1 {
+                letter-spacing: -2px;
+            }
+
+            .hero-description {
+                font-size: 16px;
+            }
+
+            .section {
+                padding: 24px 20px;
+                border-radius: 15px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            p,
+            li {
+                font-size: 14px;
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="container header-inner">
+            <a href="https://editorsuite.cloud" class="logo">
+                <span class="logo-mark">E</span>
+                <span>Editor Suite</span>
+            </a>
+
+            <a href="https://editorsuite.cloud" class="back-link">
+                ← Back to Editor Suite
+            </a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="eyebrow">Legal & Privacy</div>
+
+            <h1>Privacy Policy</h1>
+
+            <p class="hero-description">
+                Editor Suite respects and is committed to protecting the privacy
+                of every user. This policy explains how personal information is
+                collected, used, stored, and protected.
+            </p>
+
+            <span class="updated">Updated August 2026</span>
+        </div>
+    </section>
+
+    <main>
+        <div class="container content">
+
+            <!-- 01 -->
+            <section class="section">
+                <div class="section-number">01</div>
+                <h2>Introduction</h2>
+
+                <p>
+                    Editor Suite respects and is committed to protecting the
+                    privacy of every user. This Privacy Policy explains how we
+                    collect, use, store, and protect your personal information
+                    when you access or use the website
+                    <strong>editorsuite.cloud</strong>.
+                </p>
+
+                <p>
+                    By using our services, you acknowledge that you have read
+                    and agreed to this Privacy Policy.
+                </p>
+            </section>
+
+            <!-- 02 -->
+            <section class="section">
+                <div class="section-number">02</div>
+                <h2>Information We Collect</h2>
+
+                <p>
+                    We may collect various types of information from users,
+                    including but not limited to full name, email address, and
+                    other contact details provided by the user.
+                </p>
+
+                <p>
+                    In addition, we may collect information related to
+                    transactions and purchase history, as well as technical
+                    data such as IP address, device type, browser, and user
+                    activity while accessing and using the website.
+                </p>
+
+                <p>
+                    This information is collected to support service operations
+                    and to improve service quality and user experience.
+                </p>
+
+                <p>
+                    Payment information is not stored by Editor Suite and is
+                    processed through secure third-party payment service
+                    providers.
+                </p>
+            </section>
+
+            <!-- 03 -->
+            <section class="section">
+                <div class="section-number">03</div>
+                <h2>Use of Information</h2>
+
+                <p>
+                    The information we collect is used to process transactions
+                    and provide product download access to users, as well as to
+                    deliver customer service and technical support when needed.
+                </p>
+
+                <p>
+                    Additionally, the information may be used to send important
+                    notifications related to purchases, accounts, or services
+                    used.
+                </p>
+
+                <p>
+                    With user consent, we may also send updates about products,
+                    special offers, or promotions.
+                </p>
+
+                <p>
+                    Collected data is also used to improve service quality,
+                    develop products, and optimize the overall user experience.
+                </p>
+            </section>
+
+            <!-- 04 -->
+            <section class="section">
+                <div class="section-number">04</div>
+                <h2>Data Protection</h2>
+
+                <p>
+                    We implement reasonable security measures to protect user
+                    information from unauthorized access, alteration,
+                    disclosure, or destruction.
+                </p>
+
+                <p>
+                    We do not sell, rent, or trade users’ personal information
+                    to third parties.
+                </p>
+            </section>
+
+            <!-- 05 -->
+            <section class="section">
+                <div class="section-number">05</div>
+                <h2>Sharing Information with Third Parties</h2>
+
+                <p>
+                    User information may only be shared with third parties
+                    under certain conditions, specifically when necessary to
+                    support service operations.
+                </p>
+
+                <p>
+                    This includes payment processing through payment service
+                    providers, the use of supporting services such as email
+                    delivery or website analytics, and when disclosure is
+                    required by law or requested by government authorities or
+                    authorized parties in accordance with applicable
+                    regulations.
+                </p>
+            </section>
+
+            <!-- 06 -->
+            <section class="section">
+                <div class="section-number">06</div>
+                <h2>Links to Third-Party Websites</h2>
+
+                <p>
+                    Our website may contain links to other websites.
+                    Editor Suite is not responsible for the privacy policies
+                    or practices of such third-party sites.
+                </p>
+            </section>
+
+            <!-- 07 -->
+            <section class="section">
+                <div class="section-number">07</div>
+                <h2>User Rights</h2>
+
+                <p>Users have the right to:</p>
+
+                <ul>
+                    <li>Request access to their personal data</li>
+                    <li>Request correction or deletion of their data</li>
+                    <li>Unsubscribe from promotional emails at any time</li>
+                </ul>
+
+                <p style="margin-top: 16px;">
+                    Requests can be submitted via the email listed below.
+                </p>
+            </section>
+
+            <!-- 08 -->
+            <section class="section">
+                <div class="section-number">08</div>
+                <h2>Changes to This Privacy Policy</h2>
+
+                <p>
+                    Editor Suite reserves the right to update this Privacy
+                    Policy at any time. Any changes will be posted on this page
+                    and will take effect from the updated date.
+                </p>
+            </section>
+
+            <!-- 09 -->
+            <section class="section contact">
+                <div class="section-number">09</div>
+                <h2>Contact</h2>
+
+                <p>
+                    If you have any questions regarding this Privacy Policy,
+                    please contact Editor Suite through the following email:
+                </p>
+
+                <a
+                    class="contact-email"
+                    href="mailto:info@editorsuite.cloud"
+                >
+                    ✉ info@editorsuite.cloud
+                </a>
+            </section>
+
+        </div>
+    </main>
+
+    <footer>
+        <div class="container footer-inner">
+            <div>
+                © <span id="year"></span>
+                <span class="footer-brand">Editor Suite</span>
+                . All rights reserved.
+            </div>
+
+            <div>
+                Privacy Policy
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById("year").textContent =
+            new Date().getFullYear();
+    </script>
+
+</body>
+</html>
+
