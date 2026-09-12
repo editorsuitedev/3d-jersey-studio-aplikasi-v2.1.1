@@ -90,6 +90,7 @@ export default function App() {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [proModalReason, setProModalReason] = useState<string | undefined>(undefined);
   const [isSavedJerseysModalOpen, setIsSavedJerseysModalOpen] = useState(false);
 
   // Video recording states
@@ -411,7 +412,15 @@ export default function App() {
 
   // Authenticated: Route to Account Profile
   if (currentPath === '/account') {
-    return <AccountPage onNavigate={navigate} />;
+    return (
+      <AccountPage
+        onNavigate={navigate}
+        onOpenProModal={(reason) => {
+          setProModalReason(reason);
+          setIsProModalOpen(true);
+        }}
+      />
+    );
   }
 
   // Authenticated: Render Protected 3D Jersey Studio
@@ -459,7 +468,10 @@ export default function App() {
           drawerCategory={drawerCategory}
           isMobileMenuOpen={isMobileMenuOpen}
           onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
-          onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
+          onToggleMobileMenu={() => {
+            setIsDrawerOpen((prev) => !prev);
+            setIsMobileMenuOpen(false);
+          }}
           onOpenDrawerCategory={(cat) => {
             if (isDrawerOpen && drawerCategory === cat) {
               setIsDrawerOpen(false);
@@ -480,6 +492,10 @@ export default function App() {
           isLoadingModel={isLoadingModel}
           category={drawerCategory}
           onChangeCategory={(cat) => setDrawerCategory(cat)}
+          onOpenProModal={(reason) => {
+            setProModalReason(reason);
+            setIsProModalOpen(true);
+          }}
         />
 
         {/* Center 3D Viewport with OrbitControls & Gizmo */}
@@ -553,6 +569,10 @@ export default function App() {
         onExportVideo={handleExportVideo}
         onDownloadGLB={handleDownloadGLB}
         onDownloadSVG={handleDownloadSVG}
+        onOpenProModal={(reason) => {
+          setProModalReason(reason);
+          setIsProModalOpen(true);
+        }}
         isExportingVideo={isExportingVideo}
         videoExportProgress={videoExportProgress}
       />
@@ -575,7 +595,11 @@ export default function App() {
       {/* 6. PRO Membership Modal */}
       <ProModal
         isOpen={isProModalOpen}
-        onClose={() => setIsProModalOpen(false)}
+        onClose={() => {
+          setIsProModalOpen(false);
+          setProModalReason(undefined);
+        }}
+        reason={proModalReason}
         onOpenLogin={() => {
           setIsProModalOpen(false);
           setIsLoginModalOpen(true);

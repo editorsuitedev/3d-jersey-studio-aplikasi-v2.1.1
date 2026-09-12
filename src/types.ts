@@ -8,6 +8,7 @@ export interface JerseyModel {
   externalUvMapUrl?: string;
   category: string;
   description: string;
+  tier?: 'free' | 'pro';
 }
 
 export type MaterialPreset = 'basic' | 'matte' | 'glossy' | 'fabric' | 'metallic';

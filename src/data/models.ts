@@ -11,6 +11,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/01.O-Neck.svg',
     category: 'Round Neck',
     description: 'Classic circular crew-neck athletic jersey with contoured raglan sleeves.',
+    tier: 'free', // 1 Model Jersey for FREE users
   },
   {
     id: '02-v-neck',
@@ -22,6 +23,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/02.V-Neck.svg',
     category: 'V-Neck',
     description: 'Sharp athletic V-neck cut optimized for high-performance teamwear.',
+    tier: 'pro',
   },
   {
     id: '03-v-flat',
@@ -33,6 +35,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/03.V-Flat.svg',
     category: 'V-Neck',
     description: 'Flat-ribbed V-collar construction with seamless front finish.',
+    tier: 'pro',
   },
   {
     id: '04-v-cross',
@@ -44,6 +47,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/04.V-Cross.svg',
     category: 'V-Neck',
     description: 'Distinctive overlapping crossover V-neck styling with reinforced stitching.',
+    tier: 'pro',
   },
   {
     id: '05-v-casual',
@@ -55,6 +59,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/05.V-Casual.svg',
     category: 'Casual Fit',
     description: 'Relaxed fit V-neck jersey with subtle collar drape and modern proportions.',
+    tier: 'pro',
   },
   {
     id: '06-v-flat-casual',
@@ -66,6 +71,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/06.V-Flat-Casual.svg',
     category: 'Casual Fit',
     description: 'Contemporary flat collar blend with relaxed street-sport silhouette.',
+    tier: 'pro',
   },
   {
     id: '07-polo-v1',
@@ -77,6 +83,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/07.Polo-V1.svg',
     category: 'Polo Collared',
     description: 'Structured polo collar jersey with neat button placket and ribbed cuffs.',
+    tier: 'pro',
   },
   {
     id: '08-polo-v2',
@@ -88,6 +95,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/08.Polo-V2.svg',
     category: 'Polo Collared',
     description: 'Modern mandarin/stand-up polo variation with aerodynamic lines.',
+    tier: 'pro',
   },
   {
     id: '09-v-round',
@@ -99,6 +107,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/09.V-Round.svg',
     category: 'Hybrid Neck',
     description: 'Ergonomic hybrid curved collar combining round base with subtle V notch.',
+    tier: 'pro',
   },
   {
     id: '10-casual-neck',
@@ -110,6 +119,7 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/10.Casual-Neck.svg',
     category: 'Casual Fit',
     description: 'Minimalist streetwear athletic cut with ultra-clean collar finishing.',
+    tier: 'pro',
   },
 ];
 

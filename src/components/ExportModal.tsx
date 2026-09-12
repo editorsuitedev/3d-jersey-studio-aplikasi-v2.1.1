@@ -4,8 +4,12 @@ import {
   Download,
   Check,
   Loader2,
+  Crown,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 import { JerseyModel, AnimationSettings } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -20,6 +24,7 @@ interface ExportModalProps {
     ratio: '16:9' | '1:1' | '9:16' | '4:5',
     transparent: boolean
   ) => Promise<void>;
+  onOpenProModal?: (reason?: string) => void;
   onDownloadGLB?: () => void;
   onDownloadSVG?: () => void;
   isExportingVideo: boolean;
@@ -33,9 +38,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   animation,
   onExportImage,
   onExportVideo,
+  onOpenProModal,
   isExportingVideo,
   videoExportProgress,
 }) => {
+  const { currentUser } = useAuth();
+  const isPro = currentUser?.plan === 'pro';
+
   const [activeTab, setActiveTab] = useState<'image' | 'video'>('image');
 
   // Image export options: format, ratio (16:9, 1:1, 9:16, 4:5), transparent
@@ -58,10 +67,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleProPaywallTrigger = (feature: string) => {
+    if (onOpenProModal) {
+      onOpenProModal(`Fitur Export ${feature} hanya tersedia untuk paket PRO (Rp249.000 / bulan).`);
+    }
+  };
+
   const handleTriggerImageExport = async () => {
+    if (!isPro) {
+      handleProPaywallTrigger('Image 4K');
+      return;
+    }
+
     setIsExportingImage(true);
     try {
       await onExportImage(imageFormat, ratio, transparentBg);
+      // Log to backend export_history table
+      try {
+        await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'image',
+            format: imageFormat,
+            resolution: `${ratio} 4K`,
+            model_id: currentModel.id,
+          }),
+        });
+      } catch {}
       onClose();
     } catch (err) {
       console.error(err);
@@ -71,9 +104,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleTriggerVideoExport = async () => {
+    if (!isPro) {
+      handleProPaywallTrigger('Video 360°');
+      return;
+    }
+
     try {
       const exportFps = animation?.fps || 60;
       await onExportVideo(exportFps, videoDuration, videoFormat, videoRatio, videoTransparentBg);
+      // Log to backend export_history table
+      try {
+        await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'video',
+            format: videoFormat,
+            resolution: `${videoRatio} 60fps`,
+            model_id: currentModel.id,
+          }),
+        });
+      } catch {}
       onClose();
     } catch (err) {
       console.error(err);
@@ -120,6 +171,26 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </button>
         </div>
 
+        {/* Freemium Banner if User is on FREE Plan */}
+        {!isPro && (
+          <div className="p-3.5 bg-gradient-to-r from-[#201013] to-[#171214] border-b border-[#EF4444]/30 flex items-start gap-3">
+            <div className="p-1.5 rounded-lg bg-[#EF4444]/20 text-[#EF4444] mt-0.5 shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="flex-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white">Fitur Export Khusus PRO</span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-[#EF4444] text-white font-bold rounded">
+                  Rp249.000/bln
+                </span>
+              </div>
+              <p className="text-[11px] text-[#A3A3A3] mt-0.5 leading-relaxed">
+                Paket FREE bebas menggunakan semua fitur editor & 3D viewer, namun tidak dapat melakukan export file. Upgrade ke PRO untuk mengunduh karya Anda.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Tab 1: IMAGE */}
         {activeTab === 'image' && (
           <div className="p-5 space-y-4 text-xs">
@@ -152,7 +223,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
             </div>
 
-            {/* Export Aspect Ratio selection */}
+            {/* Ratio selection */}
             <div>
               <label className="text-[#A3A3A3] block mb-2 font-medium">Ratio</label>
               <div className="grid grid-cols-4 gap-2">
@@ -229,23 +300,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
             {/* CTA Button */}
             <div className="pt-3">
-              <button
-                onClick={handleTriggerImageExport}
-                disabled={isExportingImage}
-                className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
-              >
-                {isExportingImage ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Rendering 4K Canvas...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>Export Image</span>
-                  </>
-                )}
-              </button>
+              {isPro ? (
+                <button
+                  onClick={handleTriggerImageExport}
+                  disabled={isExportingImage}
+                  className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {isExportingImage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Rendering 4K Canvas...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Export Image</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleProPaywallTrigger('Image')}
+                  className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/40 cursor-pointer active:scale-95"
+                >
+                  <Crown className="w-4 h-4" />
+                  <span>Upgrade ke PRO untuk Export — Rp249.000 / bln</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -389,23 +470,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
             {/* Video CTA */}
             <div className="pt-2">
-              <button
-                onClick={handleTriggerVideoExport}
-                disabled={isExportingVideo}
-                className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
-              >
-                {isExportingVideo ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Exporting ({Math.round(videoExportProgress)}%)...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>Export Video</span>
-                  </>
-                )}
-              </button>
+              {isPro ? (
+                <button
+                  onClick={handleTriggerVideoExport}
+                  disabled={isExportingVideo}
+                  className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {isExportingVideo ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Exporting ({Math.round(videoExportProgress)}%)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Export Video 360°</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleProPaywallTrigger('Video 360°')}
+                  className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/40 cursor-pointer active:scale-95"
+                >
+                  <Crown className="w-4 h-4" />
+                  <span>Upgrade ke PRO untuk Export — Rp249.000 / bln</span>
+                </button>
+              )}
             </div>
           </div>
         )}

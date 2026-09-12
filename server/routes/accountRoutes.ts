@@ -9,6 +9,8 @@ import {
   authMiddleware,
   AuthenticatedRequest,
 } from '../middleware/authMiddleware';
+import { getUserSubscription, getUserPayments } from '../services/subscriptionService';
+import { getUserExportHistory } from '../services/exportService';
 
 export const accountRouter = Router();
 
@@ -24,15 +26,26 @@ accountRouter.get('/', authMiddleware, async (req: AuthenticatedRequest, res): P
       return;
     }
 
-    const user = await findUserById(req.user.id);
+    const [user, subscription, payments, exportHistory] = await Promise.all([
+      findUserById(req.user.id),
+      getUserSubscription(req.user.id),
+      getUserPayments(req.user.id),
+      getUserExportHistory(req.user.id, 10),
+    ]);
+
     if (!user) {
       res.status(404).json({ error: 'User tidak ditemukan' });
       return;
     }
 
-    res.json(toSafeUser(user));
+    res.json({
+      user: toSafeUser(user),
+      subscription,
+      payments,
+      exportHistory,
+    });
   } catch (error) {
-    console.error('Error fetching account:', error);
+    console.error('[Account] Error fetching account:', error);
     res.status(500).json({ error: 'Terjadi kesalahan server saat mengambil data akun' });
   }
 });
@@ -47,9 +60,9 @@ accountRouter.patch('/', authMiddleware, async (req: AuthenticatedRequest, res):
       return;
     }
 
-    const { name, email, avatar } = req.body || {};
+    const { name, email } = req.body || {};
 
-    const updates: { name?: string; email?: string; avatar?: string } = {};
+    const updates: { name?: string; email?: string } = {};
 
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length < 2) {
@@ -75,14 +88,6 @@ accountRouter.patch('/', authMiddleware, async (req: AuthenticatedRequest, res):
       updates.email = normalizedEmail;
     }
 
-    if (avatar !== undefined) {
-      if (avatar !== null && typeof avatar !== 'string') {
-        res.status(400).json({ error: 'Format avatar tidak valid' });
-        return;
-      }
-      updates.avatar = avatar || '';
-    }
-
     const updatedUser = await updateUser(req.user.id, updates);
     if (!updatedUser) {
       res.status(404).json({ error: 'User tidak ditemukan' });
@@ -95,7 +100,7 @@ accountRouter.patch('/', authMiddleware, async (req: AuthenticatedRequest, res):
       user: updatedUser,
     });
   } catch (error) {
-    console.error('Error updating account:', error);
+    console.error('[Account] Error updating account:', error);
     res.status(500).json({ error: 'Terjadi kesalahan server saat memperbarui akun' });
   }
 });

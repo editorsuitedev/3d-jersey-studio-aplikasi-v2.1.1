@@ -44,6 +44,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: Shirt,
       desc: 'Browse soccer jersey mockups & cuts',
       active: isDrawerOpen && drawerCategory === 'jersey',
+      isComingSoon: false,
     },
     {
       id: 'hanger' as ActiveTool,
@@ -52,6 +53,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: Hanger,
       desc: 'Wooden & plastic apparel hangers',
       active: isDrawerOpen && drawerCategory === 'hanger',
+      isComingSoon: true,
     },
     {
       id: 'mannequin' as ActiveTool,
@@ -60,6 +62,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: PersonStanding,
       desc: 'Athletic torso & display mannequins',
       active: isDrawerOpen && drawerCategory === 'mannequin',
+      isComingSoon: true,
     },
   ];
 
@@ -84,9 +87,17 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                 title={item.label}
               >
                 <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                {item.isComingSoon && (
+                  <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+                )}
                 {/* Tooltip on desktop only */}
                 <div className="hidden md:block absolute left-14 bg-[#1F1F1F] text-white text-xs px-2.5 py-1 rounded border border-[#3E3E3E] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                   {item.label}
+                  {item.isComingSoon && (
+                    <span className="ml-1.5 text-[10px] font-bold text-[#EF4444]">
+                      (Soon)
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -108,15 +119,16 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         </div>
       </aside>
 
-      {/* 2. Mobile Floating Hamburger Button in Viewport (if Header isn't used) */}
+      {/* 2. Mobile Floating Button in Viewport for 3D Model Catalog */}
       {onToggleMobileMenu && (
         <div className="md:hidden absolute top-3 left-3 z-20">
           <button
             onClick={onToggleMobileMenu}
-            className="w-9 h-9 rounded-xl bg-[#181818]/90 border border-[#383838] shadow-2xl backdrop-blur-md flex items-center justify-center text-[#D4D4D4] hover:text-white active:scale-95 cursor-pointer"
-            title="Open 3D Catalog Menu"
+            className="h-9 px-2.5 rounded-xl bg-[#181818]/90 border border-[#383838] shadow-2xl backdrop-blur-md flex items-center gap-1.5 text-[#D4D4D4] hover:text-white active:scale-95 cursor-pointer group"
+            title="Pilih Model 3D & Kategori"
           >
-            <Menu className="w-4 h-4" />
+            <Menu className="w-4 h-4 text-[#A3A3A3] group-hover:text-white" />
+            <span className="text-xs font-semibold text-[#ECECEC] tracking-tight">3D Model</span>
           </button>
         </div>
       )}
@@ -187,8 +199,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                     <Icon className="w-4.5 h-4.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold tracking-tight text-[#ECECEC]">
-                      {item.label}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold tracking-tight text-[#ECECEC]">
+                        {item.label}
+                      </span>
+                      {item.isComingSoon && (
+                        <span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold tracking-wider uppercase bg-[#EF4444]/15 border border-[#EF4444]/40 text-[#EF4444] shrink-0">
+                          SOON
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-[#737373] truncate">{item.desc}</div>
                   </div>
