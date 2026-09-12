@@ -479,6 +479,7 @@ export default function App() {
           onSelectModel={handleSelectModel}
           isLoadingModel={isLoadingModel}
           category={drawerCategory}
+          onChangeCategory={(cat) => setDrawerCategory(cat)}
         />
 
         {/* Center 3D Viewport with OrbitControls & Gizmo */}

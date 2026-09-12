@@ -42,7 +42,77 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     layerH: number;
   } | null>(null);
 
+  // Smooth dragging preview state so pointer drag is fluid without stutter
+  const [dragPreview, setDragPreview] = useState<{
+    layerId: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    rotation?: number;
+  } | null>(null);
+
+  const pendingUpdatesRef = useRef<{
+    layerId: string;
+    updates: Partial<DesignLayer>;
+  } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+
   const activeLayer = mockup.layers.find((l) => l.id === mockup.activeLayerId) || mockup.layers[0] || null;
+
+  // Cleanup any pending animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, []);
+
+  // Helper to update a single layer with rAF batching during dragging
+  const updateLayerSmooth = (layerId: string, updates: Partial<DesignLayer>, immediate = false) => {
+    // 1. Update local preview instantly so UI tracks cursor at 60/120fps with 0ms lag
+    setDragPreview((prev) => ({
+      layerId,
+      ...(prev?.layerId === layerId ? prev : {}),
+      ...updates,
+    }));
+
+    pendingUpdatesRef.current = {
+      layerId,
+      updates: {
+        ...(pendingUpdatesRef.current?.layerId === layerId ? pendingUpdatesRef.current.updates : {}),
+        ...updates,
+      },
+    };
+
+    if (immediate) {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      const pending = pendingUpdatesRef.current;
+      pendingUpdatesRef.current = null;
+      const nextLayers = mockup.layers.map((layer) =>
+        layer.id === pending.layerId ? { ...layer, ...pending.updates } : layer
+      );
+      onChangeMockup({ layers: nextLayers });
+      return;
+    }
+
+    if (!rafIdRef.current) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        if (pendingUpdatesRef.current) {
+          const pending = pendingUpdatesRef.current;
+          const nextLayers = mockup.layers.map((layer) =>
+            layer.id === pending.layerId ? { ...layer, ...pending.updates } : layer
+          );
+          onChangeMockup({ layers: nextLayers });
+        }
+      });
+    }
+  };
 
   // Handle Layer Drag / Resize
   const handlePointerDown = (e: React.PointerEvent, handleType: string, layerId: string) => {
@@ -68,6 +138,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
       layerW: targetLayer.width,
       layerH: targetLayer.height,
     });
+    setDragPreview(null);
 
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -83,52 +154,57 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     const dy = currentY - dragStart.startY;
 
     if (activeHandle === 'move') {
-      // Move entire layer
+      // Move entire layer smoothly
       const newX = Math.max(0, Math.min(1, dragStart.layerX + dx));
       const newY = Math.max(0, Math.min(1, dragStart.layerY + dy));
 
-      updateLayer(activeLayer.id, { x: newX, y: newY });
+      updateLayerSmooth(activeLayer.id, { x: newX, y: newY });
     } else if (activeHandle === 'rotate') {
       // Drag rotation handle relative to layer center
       const rad = Math.atan2(currentY - activeLayer.y, currentX - activeLayer.x);
       let deg = Math.round((rad * 180) / Math.PI) + 90;
       if (deg < 0) deg += 360;
-      updateLayer(activeLayer.id, { rotation: deg });
+      updateLayerSmooth(activeLayer.id, { rotation: deg });
     } else if (activeHandle === 'se') {
       // Scale from bottom-right corner up to 1.0 (4096px)
       const newW = Math.max(0.05, Math.min(1.0, dragStart.layerW + dx * 2));
       const aspect = dragStart.layerW / dragStart.layerH;
       const newH = Math.min(1.0, newW / aspect);
 
-      updateLayer(activeLayer.id, { width: newW, height: newH });
+      updateLayerSmooth(activeLayer.id, { width: newW, height: newH });
     } else if (activeHandle === 'sw') {
       // Scale from bottom-left corner up to 1.0 (4096px)
       const newW = Math.max(0.05, Math.min(1.0, dragStart.layerW - dx * 2));
       const aspect = dragStart.layerW / dragStart.layerH;
       const newH = Math.min(1.0, newW / aspect);
 
-      updateLayer(activeLayer.id, { width: newW, height: newH });
+      updateLayerSmooth(activeLayer.id, { width: newW, height: newH });
     } else if (activeHandle === 'ne') {
       // Scale from top-right corner up to 1.0 (4096px)
       const newW = Math.max(0.05, Math.min(1.0, dragStart.layerW + dx * 2));
       const aspect = dragStart.layerW / dragStart.layerH;
       const newH = Math.min(1.0, newW / aspect);
 
-      updateLayer(activeLayer.id, { width: newW, height: newH });
+      updateLayerSmooth(activeLayer.id, { width: newW, height: newH });
     } else if (activeHandle === 'nw') {
       // Scale from top-left corner up to 1.0 (4096px)
       const newW = Math.max(0.05, Math.min(1.0, dragStart.layerW - dx * 2));
       const aspect = dragStart.layerW / dragStart.layerH;
       const newH = Math.min(1.0, newW / aspect);
 
-      updateLayer(activeLayer.id, { width: newW, height: newH });
+      updateLayerSmooth(activeLayer.id, { width: newW, height: newH });
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (activeHandle) {
+      if (activeLayer && pendingUpdatesRef.current) {
+        // Commit final drag state immediately
+        updateLayerSmooth(activeLayer.id, pendingUpdatesRef.current.updates, true);
+      }
       setActiveHandle(null);
       setDragStart(null);
+      setDragPreview(null);
       try {
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
       } catch (err) {}
@@ -221,19 +297,28 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
           if (!layer.visible) return null;
           const isActive = layer.id === (activeLayer?.id || '');
 
+          // If currently dragging this layer, use instantaneous preview coordinates
+          const isCurrentDrag = dragPreview?.layerId === layer.id;
+          const currentX = isCurrentDrag && dragPreview.x !== undefined ? dragPreview.x : layer.x;
+          const currentY = isCurrentDrag && dragPreview.y !== undefined ? dragPreview.y : layer.y;
+          const currentW = isCurrentDrag && dragPreview.width !== undefined ? dragPreview.width : layer.width;
+          const currentH = isCurrentDrag && dragPreview.height !== undefined ? dragPreview.height : layer.height;
+          const currentRot = isCurrentDrag && dragPreview.rotation !== undefined ? dragPreview.rotation : layer.rotation;
+
           return (
             <div
               key={layer.id}
               onPointerDown={(e) => handlePointerDown(e, 'move', layer.id)}
               style={{
-                left: `${layer.x * 100}%`,
-                top: `${layer.y * 100}%`,
-                width: `${layer.width * 100}%`,
-                height: `${layer.height * 100}%`,
-                transform: `translate(-50%, -50%) rotate(${layer.rotation}deg)`,
+                left: `${currentX * 100}%`,
+                top: `${currentY * 100}%`,
+                width: `${currentW * 100}%`,
+                height: `${currentH * 100}%`,
+                transform: `translate(-50%, -50%) rotate(${currentRot}deg)`,
                 opacity: layer.opacity,
+                willChange: isActive ? 'transform, left, top, width, height' : 'auto',
               }}
-              className={`absolute cursor-move touch-none flex items-center justify-center ${
+              className={`absolute cursor-move touch-none flex items-center justify-center select-none ${
                 isActive ? 'z-20' : 'z-10'
               }`}
             >

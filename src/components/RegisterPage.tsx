@@ -8,7 +8,7 @@ interface RegisterPageProps {
 }
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
-  const { register, loginWithGoogle, loginAsGuest, resendVerification, oauthNotice, clearOauthNotice } = useAuth();
+  const { register, loginWithGoogle, resendVerification, oauthNotice, clearOauthNotice } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -180,11 +180,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const handleGuestLogin = () => {
-    loginAsGuest();
-    onNavigate('/studio');
-  };
-
   return (
     <div className="min-h-screen w-full bg-[#0A0A0A] text-[#ECECEC] flex items-center justify-center p-4 relative overflow-hidden select-none">
       {/* Subtle center ambient light */}
@@ -262,16 +257,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               >
                 Daftar dengan email lain
               </button>
-
-              <div className="pt-3 border-t border-[#242424] mt-2">
-                <button
-                  type="button"
-                  onClick={handleGuestLogin}
-                  className="w-full py-2 px-3 rounded-lg bg-[#181818] hover:bg-[#222] border border-[#2E2E2E] text-xs font-medium text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
-                >
-                  Lanjut Desain sebagai Tamu Sementara
-                </button>
-              </div>
             </div>
           </div>
         ) : (
@@ -584,17 +569,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   </>
                 )}
               </button>
-
-              {/* Guest Mode Option */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleGuestLogin}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#161616] hover:bg-[#202020] border border-[#2B2B2B] hover:border-[#404040] text-xs font-medium text-[#A3A3A3] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Lanjut sebagai Tamu (Mode Desain Cepat)</span>
-                </button>
-              </div>
             </form>
 
             {/* Switch to Login */}

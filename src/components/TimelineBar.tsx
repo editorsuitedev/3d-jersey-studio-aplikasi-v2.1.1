@@ -309,14 +309,14 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
       </div>
 
       {/* Right actions: Capture / Export */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="hidden md:flex items-center gap-1.5 shrink-0">
         <button
           onClick={onQuickCapture}
-          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded bg-[#262626] border border-[#595959] text-xs text-white hover:bg-[#333333] hover:border-[#888888] transition-all shadow-sm active:scale-95 cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#262626] border border-[#595959] text-xs text-white hover:bg-[#333333] hover:border-[#888888] transition-all shadow-sm active:scale-95 cursor-pointer"
           title="Instant Snapshot"
         >
           <Camera className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Capture</span>
+          <span>Capture</span>
         </button>
       </div>
       </div>
@@ -341,9 +341,11 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
 
         <button
           onClick={onOpenExport}
-          className="flex-1 h-9 rounded-lg bg-[#262626] border border-[#595959] hover:bg-[#303030] active:bg-[#383838] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+          className="group relative flex-1 h-9 rounded-lg bg-[#222222] border border-[#444444] hover:bg-[#2e2e2e] hover:border-white hover:shadow-[0_0_12px_rgba(255,255,255,0.15)] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs overflow-hidden"
+          title="Export 3D Model / Video / UV Texture"
         >
-          <Download className="w-3.5 h-3.5 text-[#ECECEC]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
+          <Download className="w-3.5 h-3.5 text-[#ECECEC] transition-transform duration-200 group-hover:-translate-y-0.5 group-active:translate-y-0" />
           <span className="tracking-tight">EXPORT</span>
         </button>
       </div>

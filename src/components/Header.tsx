@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, Crown, User as UserIcon, Shirt, Settings, LogOut, Database, Cloud } from 'lucide-react';
+import { Download, Crown, User as UserIcon, Shirt, Settings, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   currentModelName: string;
@@ -7,7 +7,6 @@ interface HeaderProps {
   onOpenUVEditor?: () => void;
   onOpenLogin: () => void;
   onOpenPro: () => void;
-  onOpenSavedJerseys?: () => void;
   onNavigate?: (path: string) => void;
   onLogout?: () => void;
   currentUser: { email: string; name: string } | null;
@@ -18,7 +17,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenLogin,
   onOpenPro,
-  onOpenSavedJerseys,
   onNavigate,
   onLogout,
   currentUser,
@@ -83,24 +81,14 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0" ref={dropdownRef}>
-        {/* Firebase Cloud Saved Projects Button */}
-        {onOpenSavedJerseys && (
-          <button
-            onClick={onOpenSavedJerseys}
-            className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#181818] border border-[#2E2E2E] hover:border-[#555] text-xs text-[#D4D4D4] hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Buka Koleksi Desain Firebase Firestore"
-          >
-            <Database className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline font-medium">Cloud Designs</span>
-          </button>
-        )}
-
         {/* Export Button (Desktop) */}
         <button
           onClick={onOpenExport}
-          className="hidden md:flex px-3.5 py-1.5 rounded bg-[#262626] border border-[#595959] text-xs font-semibold text-white hover:bg-[#333333] hover:border-white transition-all items-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+          className="group relative hidden md:flex px-3.5 py-1.5 rounded-lg bg-[#222222] border border-[#444444] text-xs font-semibold text-white hover:bg-[#2e2e2e] hover:border-white hover:shadow-[0_0_12px_rgba(255,255,255,0.15)] transition-all duration-200 items-center gap-2 shadow-sm active:scale-95 cursor-pointer overflow-hidden"
+          title="Export 3D Model / Video / UV Texture"
         >
-          <Download className="w-3.5 h-3.5 text-[#ECECEC]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
+          <Download className="w-3.5 h-3.5 text-[#ECECEC] transition-transform duration-200 group-hover:-translate-y-0.5 group-active:translate-y-0" />
           <span className="tracking-tight text-xs">EXPORT</span>
         </button>
 
@@ -116,25 +104,25 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="tracking-tight text-white hidden xs:inline">PRO</span>
         </button>
 
-        {/* Avatar Icon for Login Access */}
+        {/* Avatar Icon for Login Access / Account Settings */}
         <div className="relative">
           <button
             onClick={handleAvatarClick}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1C1C1C] hover:bg-[#282828] text-[#A3A3A3] hover:text-white transition-all flex items-center justify-center relative active:scale-95 group cursor-pointer border border-[#262626]"
-            title={currentUser ? `Akun: ${currentUser.name}` : 'Login / Studio Account'}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1C1C1C] hover:bg-[#282828] text-[#A3A3A3] hover:text-white transition-all duration-200 flex items-center justify-center relative active:scale-90 group cursor-pointer border border-[#262626] hover:border-[#555555] hover:shadow-[0_0_10px_rgba(255,255,255,0.1)]"
+            title={currentUser ? `Pengaturan Akun: ${currentUser.name}` : 'Login / Studio Account'}
           >
             {currentUser ? (
-              <div className="w-full h-full rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-black font-bold text-xs sm:text-sm flex items-center justify-center">
+              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#EF4444] to-[#3B82F6] text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-xs transition-transform duration-200 group-hover:scale-105">
                 {currentUser.name.charAt(0).toUpperCase()}
               </div>
             ) : (
-              <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#A3A3A3] group-hover:text-white transition-colors" />
+              <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#A3A3A3] group-hover:text-white transition-all duration-200 group-hover:scale-110" />
             )}
           </button>
 
           {/* User Menu Dropdown */}
           {isDropdownOpen && currentUser && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-2 w-56 bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
               <div className="px-3.5 py-2 border-b border-[#242424]">
                 <div className="text-xs font-semibold text-white truncate">
                   {currentUser.name}
@@ -142,35 +130,20 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="text-[11px] text-[#737373] truncate font-mono">
                   {currentUser.email}
                 </div>
-                <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400">
-                  <Database className="w-3 h-3" />
-                  <span>Firebase Firestore</span>
-                </div>
               </div>
 
               <div className="py-1">
-                {onOpenSavedJerseys && (
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onOpenSavedJerseys();
-                    }}
-                    className="w-full px-3.5 py-2 text-left text-xs text-[#CCCCCC] hover:text-white hover:bg-[#222222] flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <Cloud className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Desain Tersimpan (Cloud)</span>
-                  </button>
-                )}
-
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
                     onNavigate?.('/account');
                   }}
-                  className="w-full px-3.5 py-2 text-left text-xs text-[#CCCCCC] hover:text-white hover:bg-[#222222] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="group/item w-full px-3.5 py-2.5 text-left text-xs text-[#CCCCCC] hover:text-white hover:bg-[#222222] flex items-center gap-2.5 transition-all duration-200 cursor-pointer active:scale-98"
                 >
-                  <Settings className="w-3.5 h-3.5 text-[#888888]" />
-                  <span>Pengaturan Akun</span>
+                  <div className="w-6 h-6 rounded-md bg-[#1C1C1C] flex items-center justify-center text-[#888888] group-hover/item:text-white group-hover/item:bg-[#333333] transition-colors duration-200">
+                    <Settings className="w-3.5 h-3.5 transition-transform duration-300 group-hover/item:rotate-90" />
+                  </div>
+                  <span className="font-medium tracking-tight">Pengaturan Akun</span>
                 </button>
 
                 <button
@@ -178,10 +151,12 @@ export const Header: React.FC<HeaderProps> = ({
                     setIsDropdownOpen(false);
                     onLogout?.();
                   }}
-                  className="w-full px-3.5 py-2 text-left text-xs text-[#EF4444] hover:bg-[#261515] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="group/logout w-full px-3.5 py-2.5 text-left text-xs text-[#EF4444] hover:bg-[#261515] flex items-center gap-2.5 transition-all duration-200 cursor-pointer active:scale-98"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-[#EF4444]" />
-                  <span>Keluar (Logout)</span>
+                  <div className="w-6 h-6 rounded-md bg-[#221313] flex items-center justify-center text-[#EF4444] group-hover/logout:bg-[#331818] transition-colors duration-200">
+                    <LogOut className="w-3.5 h-3.5 transition-transform duration-200 group-hover/logout:-translate-x-0.5" />
+                  </div>
+                  <span className="font-medium tracking-tight">Keluar (Logout)</span>
                 </button>
               </div>
             </div>

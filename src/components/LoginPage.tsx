@@ -8,7 +8,7 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
-  const { login, loginWithGoogle, loginAsGuest, resendVerification, oauthNotice, clearOauthNotice } = useAuth();
+  const { login, loginWithGoogle, resendVerification, oauthNotice, clearOauthNotice } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -103,11 +103,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGuestLogin = () => {
-    loginAsGuest();
-    onNavigate('/studio');
   };
 
   return (
@@ -356,17 +351,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 </>
               )}
             </button>
-
-            {/* Guest Mode Option */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleGuestLogin}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#161616] hover:bg-[#202020] border border-[#2B2B2B] hover:border-[#404040] text-xs font-medium text-[#A3A3A3] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Lanjut sebagai Tamu (Mode Desain Cepat)</span>
-              </button>
-            </div>
           </form>
 
           {/* Switch to Register */}

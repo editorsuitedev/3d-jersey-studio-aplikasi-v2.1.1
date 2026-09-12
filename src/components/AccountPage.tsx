@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, ShieldCheck, LogOut, ArrowLeft, Check, AlertCircle, Save, Calendar, Key, Database } from 'lucide-react';
+import { User, Mail, ShieldCheck, LogOut, ArrowLeft, Check, AlertCircle, Save, Calendar, Key } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface AccountPageProps {
@@ -7,7 +7,7 @@ interface AccountPageProps {
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
-  const { currentUser, updateProfile, logout, isFirestoreConnected } = useAuth();
+  const { currentUser, updateProfile, logout } = useAuth();
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -77,39 +77,24 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
     : 'Aktif';
 
   return (
-    <div className="min-h-screen w-screen bg-[#0A0A0A] text-[#ECECEC] flex flex-col justify-between items-center px-4 py-8 select-none relative overflow-hidden">
-      {/* Top Navigation */}
-      <div className="w-full max-w-4xl flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigate('/studio')}
-            className="p-2 rounded-xl bg-[#181818] border border-[#2A2A2A] hover:border-[#595959] text-[#A3A3A3] hover:text-white transition-all flex items-center gap-2 text-xs font-medium cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Studio</span>
-          </button>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <img
-            src="/logo-editorsuite.svg"
-            alt="EDITOR SUITE"
-            className="h-7 w-auto object-contain"
-            onError={(e) => {
-              e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
-            }}
-          />
-          <span className="text-sm font-bold tracking-tight text-[#ECECEC]">
-            3D JERSEY STUDIO
-          </span>
-        </div>
+    <div className="min-h-screen w-screen bg-[#0A0A0A] text-[#ECECEC] flex flex-col justify-center items-center px-4 py-8 select-none relative overflow-hidden">
+      {/* Back to Studio action */}
+      <div className="w-full max-w-xl mb-4 flex items-center justify-start z-10">
+        <button
+          onClick={() => onNavigate('/studio')}
+          className="p-2 rounded-xl bg-[#181818] border border-[#2A2A2A] hover:border-[#595959] text-[#A3A3A3] hover:text-white transition-all flex items-center gap-2 text-xs font-medium cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Kembali ke Studio</span>
+        </button>
       </div>
 
       {/* Main Account Card */}
-      <div className="w-full max-w-xl my-auto z-10">
+      <div className="w-full max-w-xl z-10">
         <div className="bg-[#121212] border border-[#262626] rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-md">
           {/* Header Profile Info */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 pb-6 border-b border-[#262626]">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 text-black font-extrabold text-2xl flex items-center justify-center shadow-lg shrink-0">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#EF4444] to-[#3B82F6] text-white font-extrabold text-2xl flex items-center justify-center shadow-lg shrink-0">
               {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="text-center sm:text-left space-y-1">
@@ -121,10 +106,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-medium">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Editor Suite Member</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium">
-                  <Database className="w-3 h-3 text-emerald-400" />
-                  <span>Firestore Synced</span>
                 </div>
               </div>
             </div>
@@ -189,15 +170,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
             <div className="p-3 bg-[#181818] border border-[#262626] rounded-xl text-xs space-y-2 text-[#888888]">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-amber-500" />
-                  Database Provider
-                </span>
-                <span className="text-white font-medium text-[11px]">
-                  Firebase Firestore ({isFirestoreConnected ? 'Connected' : 'Offline'})
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
                   <Key className="w-3.5 h-3.5 text-[#595959]" />
                   User ID
                 </span>
@@ -248,15 +220,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onNavigate }) => {
             </div>
           </form>
         </div>
-      </div>
-
-      {/* Bottom Footer */}
-      <div className="w-full max-w-4xl flex items-center justify-between text-[11px] text-[#555555] z-10">
-        <span>&copy; {new Date().getFullYear()} EDITOR SUITE &middot; 3D Jersey Studio</span>
-        <span className="flex items-center gap-1.5">
-          <Database className="w-3 h-3 text-amber-500" />
-          Firebase Firestore Database
-        </span>
       </div>
     </div>
   );

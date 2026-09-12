@@ -113,6 +113,72 @@ export const JERSEY_MODELS: JerseyModel[] = [
   },
 ];
 
+export const HANGER_MODELS: JerseyModel[] = [
+  {
+    id: 'hanger-classic-wood',
+    name: 'Classic Wooden Hanger',
+    modelUrl: '/models/01.O-Neck.glb',
+    fallbackUrl: 'https://cdn.editorsuite.cloud/01.O-Neck.glb',
+    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/01.O-Neck.png',
+    uvMapUrl: '/models/01.O-Neck.svg',
+    category: '3D Hanger',
+    description: 'Display jersey draped on a contoured luxury natural wooden coat hanger.',
+  },
+  {
+    id: 'hanger-matte-black',
+    name: 'Matte Black Studio Hanger',
+    modelUrl: '/models/02.V-Neck.glb',
+    fallbackUrl: 'https://cdn.editorsuite.cloud/02.V-Neck.glb',
+    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/02.V-Neck.png',
+    uvMapUrl: '/models/02.V-Neck.svg',
+    category: '3D Hanger',
+    description: 'Modern minimalist matte dark retail display hanger with slim swivel hook.',
+  },
+  {
+    id: 'hanger-wire-minimal',
+    name: 'Industrial Metal Hanger',
+    modelUrl: '/models/05.V-Casual.glb',
+    fallbackUrl: 'https://cdn.editorsuite.cloud/05.V-Casual.glb',
+    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/05.V-Casual.png',
+    uvMapUrl: '/models/05.V-Casual.svg',
+    category: '3D Hanger',
+    description: 'Ultra-clean industrial metallic hanger silhouette for studio apparel showcase.',
+  },
+];
+
+export const MANNEQUIN_MODELS: JerseyModel[] = [
+  {
+    id: 'mannequin-athletic-torso',
+    name: 'Athletic Male Torso',
+    modelUrl: '/models/01.O-Neck.glb',
+    fallbackUrl: 'https://cdn.editorsuite.cloud/01.O-Neck.glb',
+    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/01.O-Neck.png',
+    uvMapUrl: '/models/01.O-Neck.svg',
+    category: '3D Mannequin',
+    description: 'Sculpted muscular athletic torso mannequin providing dynamic sportswear fit.',
+  },
+  {
+    id: 'mannequin-pro-stand',
+    name: 'Sport Display Mannequin',
+    modelUrl: '/models/07.Polo-V1.glb',
+    fallbackUrl: 'https://cdn.editorsuite.cloud/07.Polo-V1.glb',
+    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/07.Polo-V1.png',
+    uvMapUrl: '/models/07.Polo-V1.svg',
+    category: '3D Mannequin',
+    description: 'High-end retail sportswear showroom mannequin with ergonomic posture.',
+  },
+  {
+    id: 'mannequin-ghost-form',
+    name: 'Ghost Invisible Mannequin',
+    modelUrl: '/models/09.V-Round.glb',
+    fallbackUrl: 'https://cdn.editorsuite.cloud/09.V-Round.glb',
+    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/09.V-Round.png',
+    uvMapUrl: '/models/09.V-Round.svg',
+    category: '3D Mannequin',
+    description: 'Hollow invisible neck & shoulder form highlighting fabric cut and collar geometry.',
+  },
+];
+
 export interface EnvironmentLightingConfig {
   id: string;
   name: string;

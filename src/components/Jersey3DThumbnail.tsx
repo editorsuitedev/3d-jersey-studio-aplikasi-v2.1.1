@@ -30,6 +30,10 @@ export const Jersey3DThumbnail: React.FC<Jersey3DThumbnailProps> = ({ model, isS
     );
   }
 
+  // Check for Hanger or Mannequin model types
+  const isHanger = model.id.includes('hanger') || model.category === '3D Hanger';
+  const isMannequin = model.id.includes('mannequin') || model.category === '3D Mannequin';
+
   // Determine neck cutout style based on model ID as fallback
   const isVNeck = model.id.includes('v-neck') || model.id.includes('v-cross') || model.id.includes('v-flat');
   const isPolo = model.id.includes('polo');
@@ -72,6 +76,37 @@ export const Jersey3DThumbnail: React.FC<Jersey3DThumbnailProps> = ({ model, isS
             <stop offset="100%" stopColor="#222222" />
           </linearGradient>
         </defs>
+
+        {/* Hanger Silhouette Overlay when in Hanger category */}
+        {isHanger && (
+          <g>
+            {/* Hook */}
+            <path
+              d="M 100 24 C 100 12, 114 12, 114 20 C 114 26, 102 28, 100 36"
+              fill="none"
+              stroke="#D4AF37"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            {/* Wooden or steel hanger bar */}
+            <path
+              d="M 50 48 L 100 36 L 150 48 Q 100 42 50 48"
+              fill="#A0522D"
+              stroke="#8B4513"
+              strokeWidth="1.5"
+            />
+          </g>
+        )}
+
+        {/* Mannequin Stand Silhouette overlay when in Mannequin category */}
+        {isMannequin && (
+          <g>
+            {/* Neck cap / finial */}
+            <ellipse cx="100" cy="30" rx="14" ry="5" fill="#333333" stroke="#555555" strokeWidth="1" />
+            {/* Torso stand pole at bottom */}
+            <rect x="97" y="220" width="6" height="18" fill="#555555" />
+          </g>
+        )}
 
         {/* Back Collar depth */}
         <ellipse cx="100" cy="38" rx="28" ry="12" fill="#1C1C1C" stroke="#333333" strokeWidth="1" />

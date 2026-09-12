@@ -122,94 +122,96 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       )}
 
       {/* 3. Mobile Slide-out Menu Drawer */}
-      {isMobileMenuOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={onCloseMobileMenu}
-            className="fixed inset-0 bg-black/70 z-50 md:hidden backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-          />
+      {/* Backdrop */}
+      <div
+        onClick={onCloseMobileMenu}
+        className={`fixed inset-0 bg-black/70 z-50 md:hidden backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      />
 
-          {/* Drawer Content */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#121212] border-r border-[#262626] z-50 flex flex-col justify-between p-4 shadow-2xl animate-in slide-in-from-left duration-200 md:hidden">
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
-                <div className="flex items-center gap-2">
-                  <img
-                    src="/logo-editorsuite.svg"
-                    alt="STUDIO"
-                    className="h-8 w-auto object-contain"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
-                    }}
-                  />
-                  <span className="text-xs font-bold tracking-tight text-[#ECECEC]">
-                    3D CATALOGS
-                  </span>
-                </div>
-                <button
-                  onClick={onCloseMobileMenu}
-                  className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
-                  title="Close Menu"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Tool Category List */}
-              <div className="mt-4 flex flex-col gap-2">
-                {tools.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = item.active;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onCloseMobileMenu?.();
-                        onOpenDrawerCategory(item.category);
-                      }}
-                      className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-98 cursor-pointer ${
-                        isActive
-                          ? 'bg-[#262626] border-[#595959] text-white'
-                          : 'bg-[#181818] border-[#2A2A2A] text-[#D4D4D4] hover:bg-[#222222] hover:border-[#3E3E3E]'
-                      }`}
-                    >
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                          isActive ? 'bg-white text-black' : 'bg-[#242424] text-[#ECECEC]'
-                        }`}
-                      >
-                        <Icon className="w-4.5 h-4.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold tracking-tight text-[#ECECEC]">
-                          {item.label}
-                        </div>
-                        <div className="text-[11px] text-[#737373] truncate">{item.desc}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Bottom Info Button */}
-            <div className="pt-3 border-t border-[#262626]">
-              <button
-                onClick={() => {
-                  onCloseMobileMenu?.();
-                  onOpenHelp();
+      {/* Drawer Content */}
+      <div
+        className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#121212] border-r border-[#262626] z-50 flex flex-col justify-between p-4 shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
+        }`}
+      >
+        <div>
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo-editorsuite.svg"
+                alt="STUDIO"
+                className="h-8 w-auto object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
                 }}
-                className="w-full py-2.5 px-3 rounded-lg bg-[#181818] hover:bg-[#222222] border border-[#2A2A2A] text-[#A3A3A3] hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span>Help & Shortcuts</span>
-              </button>
+              />
+              <span className="text-xs font-bold tracking-tight text-[#ECECEC]">
+                3D CATALOGS
+              </span>
             </div>
+            <button
+              onClick={onCloseMobileMenu}
+              className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
+              title="Close Menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </>
-      )}
+
+          {/* Tool Category List */}
+          <div className="mt-4 flex flex-col gap-2">
+            {tools.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.active;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    onCloseMobileMenu?.();
+                    onOpenDrawerCategory(item.category);
+                  }}
+                  className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-98 cursor-pointer ${
+                    isActive
+                      ? 'bg-[#262626] border-[#595959] text-white'
+                      : 'bg-[#181818] border-[#2A2A2A] text-[#D4D4D4] hover:bg-[#222222] hover:border-[#3E3E3E]'
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      isActive ? 'bg-white text-black' : 'bg-[#242424] text-[#ECECEC]'
+                    }`}
+                  >
+                    <Icon className="w-4.5 h-4.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold tracking-tight text-[#ECECEC]">
+                      {item.label}
+                    </div>
+                    <div className="text-[11px] text-[#737373] truncate">{item.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bottom Info Button */}
+        <div className="pt-3 border-t border-[#262626]">
+          <button
+            onClick={() => {
+              onCloseMobileMenu?.();
+              onOpenHelp();
+            }}
+            className="w-full py-2.5 px-3 rounded-lg bg-[#181818] hover:bg-[#222222] border border-[#2A2A2A] text-[#A3A3A3] hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Help & Shortcuts</span>
+          </button>
+        </div>
+      </div>
     </>
   );
 };
