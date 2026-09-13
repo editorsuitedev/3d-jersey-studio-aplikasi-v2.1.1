@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Download, Crown, User as UserIcon, Shirt, Settings, LogOut } from 'lucide-react';
+import React from 'react';
+import { Download, Crown, User, Shirt, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   currentModelName: string;
@@ -7,9 +7,8 @@ interface HeaderProps {
   onOpenUVEditor?: () => void;
   onOpenLogin: () => void;
   onOpenPro: () => void;
-  onNavigate?: (path: string) => void;
-  onLogout?: () => void;
   currentUser: { email: string; name: string } | null;
+  isPro?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,41 +16,15 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenLogin,
   onOpenPro,
-  onNavigate,
-  onLogout,
   currentUser,
+  isPro = false,
 }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleAvatarClick = () => {
-    if (currentUser) {
-      setIsDropdownOpen((prev) => !prev);
-    } else {
-      if (onNavigate) {
-        onNavigate('/login');
-      } else {
-        onOpenLogin();
-      }
-    }
-  };
-
   return (
-    <header className="h-14 bg-[#0D0D0D] border-b border-[#262626] px-3 sm:px-4 flex items-center justify-between z-40 select-none relative">
+    <header className="h-14 bg-[#0D0D0D] border-b border-[#262626] px-3 sm:px-4 flex items-center justify-between z-40 select-none">
       {/* Left: Brand Logo + STUDIO + Model Indicator */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <a
-          href="https://editorsuite.cloud"
+          href="https://editorsuite.id"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 group transition-opacity hover:opacity-90 shrink-0"
@@ -61,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
             alt="STUDIO"
             className="h-8 sm:h-6 w-auto object-contain"
             onError={(e) => {
-              e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
+              e.currentTarget.src = 'https://editorsuite.id/logo-editorsuite.svg';
             }}
           />
           <span className="text-xs sm:text-sm font-bold tracking-tight text-[#ECECEC] hidden xs:inline">
@@ -77,91 +50,64 @@ export const Header: React.FC<HeaderProps> = ({
             {currentModelName}
           </span>
         </div>
+
+        {/* Plan Indicator Pill (Free or Pro) - visibility hidden per request */}
+        <div className="hidden sm:flex items-center">
+          <span
+            className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#1F1F1F] border border-[#333333] text-[#A3A3A3] invisible"
+            style={{ visibility: 'hidden' }}
+          ></span>
+        </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0" ref={dropdownRef}>
-        {/* Export Button (Desktop) */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* Export Button (Desktop) - without scale on hover */}
         <button
           onClick={onOpenExport}
-          className="group relative hidden md:flex px-3.5 py-1.5 rounded-lg bg-[#222222] border border-[#444444] text-xs font-semibold text-white hover:bg-[#2e2e2e] hover:border-white hover:shadow-[0_0_12px_rgba(255,255,255,0.15)] transition-all duration-200 items-center gap-2 shadow-sm active:scale-95 cursor-pointer overflow-hidden"
-          title="Export 3D Model / Video / UV Texture"
+          className="hidden md:flex px-3.5 py-1.5 rounded bg-[#262626] border border-[#595959] text-xs font-semibold text-white hover:bg-[#333333] hover:border-white transition-colors items-center gap-2 shadow-sm cursor-pointer active:scale-95"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
-          <Download className="w-3.5 h-3.5 text-[#ECECEC] transition-transform duration-200 group-hover:-translate-y-0.5 group-active:translate-y-0" />
+          <Download className="w-3.5 h-3.5 text-[#ECECEC]" />
           <span className="tracking-tight text-xs">EXPORT</span>
         </button>
 
         <div className="hidden md:block h-4 w-px bg-[#262626] mx-0.5" />
 
-        {/* PRO Button */}
-        <button
-          onClick={onOpenPro}
-          className="h-8 px-2 sm:px-2.5 rounded bg-[#da0a2c]/15 border border-[#da0a2c]/50 hover:border-[#da0a2c] hover:bg-[#da0a2c]/25 text-[#da0a2c] font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
-          title="Editor Suite PRO Access"
-        >
-          <Crown className="w-3.5 h-3.5 text-[#da0a2c] fill-[#da0a2c]/30" />
-          <span className="tracking-tight text-white hidden xs:inline">PRO</span>
-        </button>
-
-        {/* Avatar Icon for Login Access / Account Settings */}
-        <div className="relative">
+        {/* PRO Button / Upgrade CTA */}
+        {isPro ? (
           <button
-            onClick={handleAvatarClick}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1C1C1C] hover:bg-[#282828] text-[#A3A3A3] hover:text-white transition-all duration-200 flex items-center justify-center relative active:scale-90 group cursor-pointer border border-[#262626] hover:border-[#555555] hover:shadow-[0_0_10px_rgba(255,255,255,0.1)]"
-            title={currentUser ? `Pengaturan Akun: ${currentUser.name}` : 'Login / Studio Account'}
+            onClick={onOpenPro}
+            className="h-8 px-2 sm:px-2.5 rounded-lg bg-[#da0a2c]/20 border border-[#da0a2c]/60 text-white font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer hover:bg-[#da0a2c]/30"
+            title="Editor Suite Pro Aktif - Klik untuk kelola paket"
           >
-            {currentUser ? (
-              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#EF4444] to-[#3B82F6] text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-xs transition-transform duration-200 group-hover:scale-105">
-                {currentUser.name.charAt(0).toUpperCase()}
-              </div>
-            ) : (
-              <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#A3A3A3] group-hover:text-white transition-all duration-200 group-hover:scale-110" />
-            )}
+            <Crown className="w-3.5 h-3.5 text-[#da0a2c] fill-[#da0a2c]" />
+            <span className="tracking-tight hidden xs:inline">PRO AKTIF</span>
           </button>
+        ) : (
+          <button
+            onClick={onOpenPro}
+            className="h-8 px-2 sm:px-2.5 rounded-lg bg-[#da0a2c] hover:bg-[#b80825] border border-[#da0a2c] text-white font-bold text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-sm shadow-red-950/40 active:scale-95 cursor-pointer"
+            title="Upgrade ke Pro Plan (Rp249.000/bln)"
+          >
+            <Crown className="w-3.5 h-3.5 text-white" />
+            <span className="tracking-tight">UPGRADE PRO</span>
+          </button>
+        )}
 
-          {/* User Menu Dropdown */}
-          {isDropdownOpen && currentUser && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-              <div className="px-3.5 py-2 border-b border-[#242424]">
-                <div className="text-xs font-semibold text-white truncate">
-                  {currentUser.name}
-                </div>
-                <div className="text-[11px] text-[#737373] truncate font-mono">
-                  {currentUser.email}
-                </div>
-              </div>
-
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onNavigate?.('/account');
-                  }}
-                  className="group/item w-full px-3.5 py-2.5 text-left text-xs text-[#CCCCCC] hover:text-white hover:bg-[#222222] flex items-center gap-2.5 transition-all duration-200 cursor-pointer active:scale-98"
-                >
-                  <div className="w-6 h-6 rounded-md bg-[#1C1C1C] flex items-center justify-center text-[#888888] group-hover/item:text-white group-hover/item:bg-[#333333] transition-colors duration-200">
-                    <Settings className="w-3.5 h-3.5 transition-transform duration-300 group-hover/item:rotate-90" />
-                  </div>
-                  <span className="font-medium tracking-tight">Pengaturan Akun</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onLogout?.();
-                  }}
-                  className="group/logout w-full px-3.5 py-2.5 text-left text-xs text-[#EF4444] hover:bg-[#261515] flex items-center gap-2.5 transition-all duration-200 cursor-pointer active:scale-98"
-                >
-                  <div className="w-6 h-6 rounded-md bg-[#221313] flex items-center justify-center text-[#EF4444] group-hover/logout:bg-[#331818] transition-colors duration-200">
-                    <LogOut className="w-3.5 h-3.5 transition-transform duration-200 group-hover/logout:-translate-x-0.5" />
-                  </div>
-                  <span className="font-medium tracking-tight">Keluar (Logout)</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Avatar Icon for Login Access */}
+        <button
+          onClick={onOpenLogin}
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-[#dc2626] via-[#7c3aed] to-[#2563eb] p-[1.5px] transition-shadow hover:shadow-[0_0_12px_rgba(37,99,235,0.45)] flex items-center justify-center relative cursor-pointer active:scale-95"
+          title={currentUser ? `Account: ${currentUser.name} (${isPro ? 'Pro' : 'Free'})` : 'Login / Studio Account'}
+        >
+          <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#b91c1c] via-[#4f46e5] to-[#1d4ed8] text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-inner">
+            {currentUser ? (
+              currentUser.name.charAt(0).toUpperCase()
+            ) : (
+              <User className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
+            )}
+          </div>
+        </button>
       </div>
     </header>
   );

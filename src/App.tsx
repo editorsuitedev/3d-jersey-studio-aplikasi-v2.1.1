@@ -23,64 +23,68 @@ import { ExportModal } from './components/ExportModal';
 import { HelpModal } from './components/HelpModal';
 import { LoginModal } from './components/LoginModal';
 import { ProModal } from './components/ProModal';
-import { SavedJerseysModal } from './components/SavedJerseysModal';
-import { SavedJerseyProject } from './services/supabaseJerseyService';
-import { LoginPage } from './components/LoginPage';
-import { RegisterPage } from './components/RegisterPage';
-import { AccountPage } from './components/AccountPage';
-import { useAuth } from './context/AuthContext';
 import { generateExportFileName } from './utils/exportUtils';
+import {
+  UserSubscription,
+  getStoredSubscription,
+  isProSubscription,
+  activateProSubscription,
+  expireProSubscription,
+  FREE_ALLOWED_MODEL_ID,
+  PRO_PRICE_FORMATTED,
+} from './utils/subscription';
 
 export default function App() {
-  const { currentUser, isLoading: isAuthLoading, logout } = useAuth();
   const viewportRef = useRef<Viewport3DHandle>(null);
-
-  // Client-side route synchronization
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    const p = typeof window !== 'undefined' ? window.location.pathname : '/studio';
-    return p === '/' ? '/studio' : p;
-  });
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const p = window.location.pathname;
-      setCurrentPath(p === '/' ? '/studio' : p);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  const navigate = (path: string) => {
-    if (typeof window !== 'undefined') {
-      window.history.pushState({}, '', path);
-    }
-    setCurrentPath(path);
-  };
-
-  // Guard protected routes
-  useEffect(() => {
-    if (isAuthLoading) return;
-
-    if (!currentUser) {
-      if (currentPath !== '/login' && currentPath !== '/register') {
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', '/login');
-        }
-        setCurrentPath('/login');
-      }
-    } else {
-      if (currentPath === '/login' || currentPath === '/register') {
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', '/studio');
-        }
-        setCurrentPath('/studio');
-      }
-    }
-  }, [currentUser, isAuthLoading, currentPath]);
 
   // Active 3D Jersey Model (Default to 01. O Neck)
   const [currentModel, setCurrentModel] = useState<JerseyModel>(JERSEY_MODELS[0]);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
+
+  // SaaS Subscription State (Default: Free Plan)
+  const [subscription, setSubscription] = useState<UserSubscription>(() => getStoredSubscription());
+  const [proModalReason, setProModalReason] = useState<{ title: string; desc: string } | null>(null);
+
+  const isPro = isProSubscription(subscription);
+
+  // Open Pro modal with optional custom contextual reason
+  const handleRequirePro = (title?: string, desc?: string) => {
+    if (title) {
+      setProModalReason({ title, desc: desc || '' });
+    } else {
+      setProModalReason(null);
+    }
+    setIsProModalOpen(true);
+  };
+
+  // Upgrade to Pro Plan action (simulates payment of Rp249.000/bulan)
+  const handleUpgradeToPro = () => {
+    const updated = activateProSubscription(30);
+    setSubscription(updated);
+  };
+
+  // Expire / Revert Pro Plan action
+  const handleExpireSubscription = () => {
+    const expired = expireProSubscription();
+    setSubscription(expired);
+    // Jika subscription Pro berakhir atau tidak aktif, user otomatis kembali ke Free Plan
+    if (currentModel.id !== FREE_ALLOWED_MODEL_ID) {
+      const freeModel = JERSEY_MODELS.find((m) => m.id === FREE_ALLOWED_MODEL_ID) || JERSEY_MODELS[0];
+      setCurrentModel(freeModel);
+      setMockup((prev) => ({ ...prev, modelId: freeModel.id }));
+    }
+  };
+
+  // Auto-validate plan and revert model if Free user somehow has a Pro model
+  useEffect(() => {
+    const currentSub = getStoredSubscription();
+    setSubscription(currentSub);
+    if (!isProSubscription(currentSub) && currentModel.id !== FREE_ALLOWED_MODEL_ID) {
+      const freeModel = JERSEY_MODELS.find((m) => m.id === FREE_ALLOWED_MODEL_ID) || JERSEY_MODELS[0];
+      setCurrentModel(freeModel);
+      setMockup((prev) => ({ ...prev, modelId: freeModel.id }));
+    }
+  }, []);
 
   // UI Drawers & Modals (Models drawer closed on initial load per user request)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -90,8 +94,7 @@ export default function App() {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
-  const [proModalReason, setProModalReason] = useState<string | undefined>(undefined);
-  const [isSavedJerseysModalOpen, setIsSavedJerseysModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ email: string; name: string } | null>(null);
 
   // Video recording states
   const [isExportingVideo, setIsExportingVideo] = useState(false);
@@ -169,7 +172,7 @@ export default function App() {
   const [animation, setAnimation] = useState<AnimationSettings>({
     isPlaying: false,
     currentTime: 0,
-    duration: 8,
+    duration: 10,
     speed: 1,
     loop: true,
     isHQ: true,
@@ -185,6 +188,13 @@ export default function App() {
   // Model Selection
   const handleSelectModel = (model: JerseyModel) => {
     if (model.id === currentModel.id) return;
+
+    // Sistem harus memeriksa status plan user sebelum mengaktifkan model yang hanya tersedia untuk Pro
+    if (!isPro && model.id !== FREE_ALLOWED_MODEL_ID) {
+      handleRequirePro(`Model "${model.name}" khusus Pro Plan`);
+      return;
+    }
+
     setIsLoadingModel(true);
     setCurrentModel(model);
     setMockup((prev) => ({ ...prev, modelId: model.id }));
@@ -280,6 +290,11 @@ export default function App() {
     ratio: '16:9' | '1:1' | '9:16' | '4:5',
     transparent: boolean
   ) => {
+    if (!isPro) {
+      handleRequirePro('Fitur Export Image khusus Pro Plan');
+      return;
+    }
+
     if (!viewportRef.current) return;
 
     const dataUrl = await viewportRef.current.captureScreenshot(
@@ -300,6 +315,11 @@ export default function App() {
 
   // Instant Snapshot Capture
   const handleQuickCapture = async () => {
+    if (!isPro) {
+      handleRequirePro('Fitur Export Image khusus Pro Plan');
+      return;
+    }
+
     if (!viewportRef.current) return;
     const dataUrl = await viewportRef.current.captureScreenshot('png', 2, '1:1', false);
     const filename = generateExportFileName(currentModel.name, 'png');
@@ -319,6 +339,11 @@ export default function App() {
     ratio: '16:9' | '1:1' | '9:16' | '4:5',
     transparent: boolean
   ) => {
+    if (!isPro) {
+      handleRequirePro('Fitur Export Video turntable khusus Pro Plan');
+      return;
+    }
+
     if (!viewportRef.current) return;
     setIsExportingVideo(true);
     setVideoExportProgress(0);
@@ -352,78 +377,6 @@ export default function App() {
     }
   };
 
-  // Loading screen
-  if (isAuthLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen w-screen bg-[#0D0D0D] text-[#ECECEC] select-none">
-        <img
-          src="/logo-editorsuite.svg"
-          alt="EDITOR SUITE"
-          className="h-9 w-auto object-contain mb-4 animate-pulse"
-          onError={(e) => {
-            e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
-          }}
-        />
-        <div className="w-6 h-6 border-2 border-[#da0a2c] border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-[#737373] tracking-wide">Memuat 3D Jersey Studio...</p>
-      </div>
-    );
-  }
-
-  // Not authenticated: Route to Register or Login
-  if (!currentUser) {
-    if (currentPath === '/register') {
-      return <RegisterPage onNavigate={navigate} />;
-    }
-    return <LoginPage onNavigate={navigate} />;
-  }
-
-  const handleLoadProject = (project: SavedJerseyProject) => {
-    const matchingModel = JERSEY_MODELS.find((m) => m.id === project.modelId);
-    if (matchingModel) {
-      setCurrentModel(matchingModel);
-    }
-    if (project.mockupState) {
-      setMockup(project.mockupState);
-    } else {
-      setMockup((prev) => ({
-        ...prev,
-        modelId: project.modelId,
-        baseColor: project.baseColor,
-        accentColor: project.accentColor,
-        collarColor: project.collarColor,
-        sleeveColor: project.sleeveColor,
-        pattern: project.pattern as any,
-        roughness: project.roughness,
-        metalness: project.metalness,
-        fabricSheen: project.fabricSheen,
-      }));
-    }
-    if (project.lightingState) {
-      setLighting(project.lightingState);
-    }
-    if (project.cameraState) {
-      setCamera(project.cameraState);
-    }
-    if (project.transformState) {
-      setTransform(project.transformState);
-    }
-  };
-
-  // Authenticated: Route to Account Profile
-  if (currentPath === '/account') {
-    return (
-      <AccountPage
-        onNavigate={navigate}
-        onOpenProModal={(reason) => {
-          setProModalReason(reason);
-          setIsProModalOpen(true);
-        }}
-      />
-    );
-  }
-
-  // Authenticated: Render Protected 3D Jersey Studio
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0D0D0D] text-[#ECECEC] font-sans antialiased select-none">
       {/* 1. Header Bar */}
@@ -431,36 +384,31 @@ export default function App() {
         currentModelName={currentModel.name}
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenUVEditor={() => {}}
-        onOpenLogin={() => navigate('/account')}
-        onOpenPro={() => setIsProModalOpen(true)}
-        onOpenSavedJerseys={() => setIsSavedJerseysModalOpen(true)}
-        onNavigate={navigate}
-        onLogout={async () => {
-          await logout();
-          navigate('/login');
-        }}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onOpenPro={() => handleRequirePro()}
         currentUser={currentUser}
+        isPro={isPro}
       />
 
       {/* 2. Main Workspace (Sidebars + 3D Center) */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Mobile Backdrop for Models Drawer */}
-        {isDrawerOpen && (
-          <div
-            onClick={() => setIsDrawerOpen(false)}
-            className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-          />
-        )}
+        <div
+          onClick={() => setIsDrawerOpen(false)}
+          className={`fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+            isDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        />
 
         {/* Mobile Backdrop for Inspector Panel */}
-        {isInspectorOpenMobile && (
-          <div
-            onClick={() => setIsInspectorOpenMobile(false)}
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-          />
-        )}
+        <div
+          onClick={() => setIsInspectorOpenMobile(false)}
+          className={`fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+            isInspectorOpenMobile ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        />
 
-        {/* Vertical Left Tool Strip on Desktop, or Hamburger Drawer on Mobile */}
+        {/* Vertical Left Tool Strip on Desktop, or Floating Hamburger on Mobile */}
         <SidebarNav
           activeTool={activeTool}
           onSelectTool={(tool) => setActiveTool(tool)}
@@ -468,10 +416,7 @@ export default function App() {
           drawerCategory={drawerCategory}
           isMobileMenuOpen={isMobileMenuOpen}
           onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
-          onToggleMobileMenu={() => {
-            setIsDrawerOpen((prev) => !prev);
-            setIsMobileMenuOpen(false);
-          }}
+          onToggleMobileMenu={() => setIsDrawerOpen((prev) => !prev)}
           onOpenDrawerCategory={(cat) => {
             if (isDrawerOpen && drawerCategory === cat) {
               setIsDrawerOpen(false);
@@ -483,7 +428,7 @@ export default function App() {
           onOpenHelp={() => setIsHelpModalOpen(true)}
         />
 
-        {/* Clothing Mockups Drawer with direct 3D thumbnails */}
+        {/* 3D Models Drawer with Category Dropdown Menu (3D Jersey, 3D Hanger, 3D Mannequin) */}
         <ModelsDrawer
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
@@ -492,10 +437,8 @@ export default function App() {
           isLoadingModel={isLoadingModel}
           category={drawerCategory}
           onChangeCategory={(cat) => setDrawerCategory(cat)}
-          onOpenProModal={(reason) => {
-            setProModalReason(reason);
-            setIsProModalOpen(true);
-          }}
+          isPro={isPro}
+          onRequirePro={(title, desc) => handleRequirePro(title, desc)}
         />
 
         {/* Center 3D Viewport with OrbitControls & Gizmo */}
@@ -569,12 +512,13 @@ export default function App() {
         onExportVideo={handleExportVideo}
         onDownloadGLB={handleDownloadGLB}
         onDownloadSVG={handleDownloadSVG}
-        onOpenProModal={(reason) => {
-          setProModalReason(reason);
-          setIsProModalOpen(true);
-        }}
         isExportingVideo={isExportingVideo}
         videoExportProgress={videoExportProgress}
+        isPro={isPro}
+        onOpenPro={() => {
+          setIsExportModalOpen(false);
+          handleRequirePro('Fitur Export khusus Pro Plan');
+        }}
       />
 
       {/* Help / Shortcuts Modal */}
@@ -585,10 +529,12 @@ export default function App() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         currentUser={currentUser}
-        onLogin={() => {}}
-        onLogout={async () => {
-          await logout();
-          navigate('/login');
+        onLogin={(user) => setCurrentUser(user)}
+        onLogout={() => setCurrentUser(null)}
+        subscription={subscription}
+        onOpenPro={() => {
+          setIsLoginModalOpen(false);
+          handleRequirePro();
         }}
       />
 
@@ -597,24 +543,17 @@ export default function App() {
         isOpen={isProModalOpen}
         onClose={() => {
           setIsProModalOpen(false);
-          setProModalReason(undefined);
+          setProModalReason(null);
         }}
-        reason={proModalReason}
         onOpenLogin={() => {
           setIsProModalOpen(false);
           setIsLoginModalOpen(true);
         }}
-      />
-
-      {/* 7. Firebase Firestore Saved Jerseys Modal */}
-      <SavedJerseysModal
-        isOpen={isSavedJerseysModalOpen}
-        onClose={() => setIsSavedJerseysModalOpen(false)}
-        currentMockup={mockup}
-        currentLighting={lighting}
-        currentCamera={camera}
-        currentTransform={transform}
-        onLoadProject={handleLoadProject}
+        subscription={subscription}
+        onUpgradeToPro={handleUpgradeToPro}
+        onExpireSubscription={handleExpireSubscription}
+        reasonTitle={proModalReason?.title}
+        reasonDesc={proModalReason?.desc}
       />
     </div>
   );

@@ -86,12 +86,11 @@ export const HexColorInput: React.FC<HexColorInputProps> = ({
     <div
       className={`inline-flex items-center gap-2 px-2 py-1 rounded bg-[#141414] border border-[#262626] hover:border-[#444444] transition-colors focus-within:border-white/70 ${className}`}
     >
-      {/* Clickable Swatch */}
-      <div
-        onClick={() => colorPickerRef.current?.click()}
+      {/* Clickable Swatch with direct native touch interaction */}
+      <label
         className={`${
-          isSmall ? 'w-4 h-4' : 'w-5 h-5'
-        } rounded-xs border border-[#444444] shadow-xs shrink-0 cursor-pointer relative hover:scale-105 active:scale-95 transition-transform`}
+          isSmall ? 'w-5 h-5' : 'w-6 h-6'
+        } rounded-xs border border-[#555555] shadow-xs shrink-0 cursor-pointer relative hover:scale-105 active:scale-95 transition-transform flex items-center justify-center overflow-hidden`}
         style={{ backgroundColor: safePickerValue }}
         title="Open color picker"
       >
@@ -100,10 +99,10 @@ export const HexColorInput: React.FC<HexColorInputProps> = ({
           type="color"
           value={safePickerValue}
           onChange={handlePickerChange}
-          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer pointer-events-none"
-          tabIndex={-1}
+          onInput={handlePickerChange}
+          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer pointer-events-auto z-10"
         />
-      </div>
+      </label>
 
       {/* Hex Text Input */}
       <div className="flex items-center">

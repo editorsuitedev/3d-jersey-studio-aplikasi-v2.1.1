@@ -66,3 +66,12 @@ input[type="range"]::-moz-range-thumb {
 .w-80 {
   width: calc(var(--spacing) * 65) !important;
 }
+
+/* Smooth and fast placeholder fade on focus */
+.smooth-placeholder::placeholder {
+  transition: opacity 0.15s ease-out;
+  opacity: 1;
+}
+.smooth-placeholder:focus::placeholder {
+  opacity: 0;
+}

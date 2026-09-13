@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Camera, Repeat, Check, X, Sliders, Settings2, Download } from 'lucide-react';
+import { motion } from 'motion/react';
 import { AnimationSettings } from '../types';
 
 interface TimelineBarProps {
@@ -69,6 +70,13 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
     const currentIndex = fpsOptions.indexOf(currentFps);
     const nextFps = fpsOptions[(currentIndex + 1) % fpsOptions.length];
     onChangeAnimation({ fps: nextFps });
+  };
+
+  const toggleDuration = () => {
+    const durations = [10, 8, 6, 3];
+    const currentIndex = durations.indexOf(animation.duration);
+    const nextDuration = durations[(currentIndex + 1) % durations.length];
+    onChangeAnimation({ duration: nextDuration });
   };
 
   const currentEasing: EasingPreset = animation.easing || 'linear';
@@ -271,10 +279,19 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
         {/* Playback Speed */}
         <button
           onClick={toggleSpeed}
-          className="text-[10px] sm:text-[11px] px-1 sm:px-1.5 py-0.5 rounded bg-[#262626] border border-[#404040] text-[#D4D4D4] hover:border-[#666666] transition-colors cursor-pointer"
-          title="Playback Speed"
+          className="text-[10px] sm:text-[11px] px-1 sm:px-1.5 py-0.5 rounded bg-[#262626] border border-[#404040] text-[#D4D4D4] hover:border-[#666666] transition-colors cursor-pointer font-mono"
+          title="Playback Speed (0.5x, 1x, 1.5x, 2x)"
         >
           {animation.speed}x
+        </button>
+
+        {/* Duration (10s, 8s, 6s, 3s) beside Playback Speed */}
+        <button
+          onClick={toggleDuration}
+          className="text-[10px] sm:text-[11px] px-1 sm:px-1.5 py-0.5 rounded bg-[#262626] border border-[#404040] text-[#D4D4D4] hover:border-[#666666] transition-colors cursor-pointer font-mono"
+          title="Turntable Duration (10s, 8s, 6s, 3s)"
+        >
+          {animation.duration}s
         </button>
       </div>
 
@@ -283,11 +300,10 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
         {/* Tick labels (Desktop / Tablet) */}
         <div className="hidden sm:flex justify-between text-[9px] text-[#555555] font-mono mb-1 px-1">
           <span>0:00</span>
-          <span>0:02</span>
-          <span>0:04</span>
-          <span>0:06</span>
-          <span>0:08</span>
-          <span>0:10</span>
+          <span>0:0{Math.floor(animation.duration * 0.25)}</span>
+          <span>0:0{Math.floor(animation.duration * 0.5)}</span>
+          <span>0:0{Math.floor(animation.duration * 0.75)}</span>
+          <span>{animation.duration >= 10 ? `0:${animation.duration}` : `0:0${animation.duration}`}</span>
         </div>
 
         <div className="relative flex items-center group">
@@ -308,11 +324,11 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
         </div>
       </div>
 
-      {/* Right actions: Capture / Export */}
-      <div className="hidden md:flex items-center gap-1.5 shrink-0">
+      {/* Right actions: Capture (hidden on mobile per user request) */}
+      <div className="hidden sm:flex items-center gap-1.5 shrink-0">
         <button
           onClick={onQuickCapture}
-          className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#262626] border border-[#595959] text-xs text-white hover:bg-[#333333] hover:border-[#888888] transition-all shadow-sm active:scale-95 cursor-pointer"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded bg-[#262626] border border-[#595959] text-xs text-white hover:bg-[#333333] hover:border-[#888888] transition-all shadow-sm active:scale-95 cursor-pointer"
           title="Instant Snapshot"
         >
           <Camera className="w-3.5 h-3.5" />
@@ -341,11 +357,9 @@ export const TimelineBar: React.FC<TimelineBarProps> = ({
 
         <button
           onClick={onOpenExport}
-          className="group relative flex-1 h-9 rounded-lg bg-[#222222] border border-[#444444] hover:bg-[#2e2e2e] hover:border-white hover:shadow-[0_0_12px_rgba(255,255,255,0.15)] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs overflow-hidden"
-          title="Export 3D Model / Video / UV Texture"
+          className="flex-1 h-9 rounded-lg bg-[#262626] border border-[#595959] hover:bg-[#303030] active:bg-[#383838] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
-          <Download className="w-3.5 h-3.5 text-[#ECECEC] transition-transform duration-200 group-hover:-translate-y-0.5 group-active:translate-y-0" />
+          <Download className="w-3.5 h-3.5 text-[#ECECEC]" />
           <span className="tracking-tight">EXPORT</span>
         </button>
       </div>

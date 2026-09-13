@@ -4,12 +4,11 @@ import {
   Download,
   Check,
   Loader2,
-  Crown,
   Lock,
-  Sparkles,
+  Crown,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { JerseyModel, AnimationSettings } from '../types';
-import { useAuth } from '../context/AuthContext';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -24,11 +23,12 @@ interface ExportModalProps {
     ratio: '16:9' | '1:1' | '9:16' | '4:5',
     transparent: boolean
   ) => Promise<void>;
-  onOpenProModal?: (reason?: string) => void;
   onDownloadGLB?: () => void;
   onDownloadSVG?: () => void;
   isExportingVideo: boolean;
   videoExportProgress: number; // 0 to 100
+  isPro: boolean;
+  onOpenPro: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -38,13 +38,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   animation,
   onExportImage,
   onExportVideo,
-  onOpenProModal,
   isExportingVideo,
   videoExportProgress,
+  isPro,
+  onOpenPro,
 }) => {
-  const { currentUser } = useAuth();
-  const isPro = currentUser?.plan === 'pro';
-
   const [activeTab, setActiveTab] = useState<'image' | 'video'>('image');
 
   // Image export options: format, ratio (16:9, 1:1, 9:16, 4:5), transparent
@@ -57,44 +55,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [videoFormat, setVideoFormat] = useState<'mp4' | 'webm'>('mp4');
   const [videoRatio, setVideoRatio] = useState<'16:9' | '1:1' | '9:16' | '4:5'>('16:9');
   const [videoTransparentBg, setVideoTransparentBg] = useState(false);
-  const [videoDuration, setVideoDuration] = useState<number>(() => animation?.duration || 6);
-
-  useEffect(() => {
-    if (animation?.duration) {
-      setVideoDuration(animation.duration);
-    }
-  }, [animation?.duration]);
-
-  if (!isOpen) return null;
-
-  const handleProPaywallTrigger = (feature: string) => {
-    if (onOpenProModal) {
-      onOpenProModal(`Fitur Export ${feature} hanya tersedia untuk paket PRO (Rp249.000 / bulan).`);
-    }
-  };
 
   const handleTriggerImageExport = async () => {
     if (!isPro) {
-      handleProPaywallTrigger('Image 4K');
+      onClose();
+      onOpenPro();
       return;
     }
-
     setIsExportingImage(true);
     try {
       await onExportImage(imageFormat, ratio, transparentBg);
-      // Log to backend export_history table
-      try {
-        await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'image',
-            format: imageFormat,
-            resolution: `${ratio} 4K`,
-            model_id: currentModel.id,
-          }),
-        });
-      } catch {}
       onClose();
     } catch (err) {
       console.error(err);
@@ -105,26 +75,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleTriggerVideoExport = async () => {
     if (!isPro) {
-      handleProPaywallTrigger('Video 360°');
+      onClose();
+      onOpenPro();
       return;
     }
-
     try {
       const exportFps = animation?.fps || 60;
-      await onExportVideo(exportFps, videoDuration, videoFormat, videoRatio, videoTransparentBg);
-      // Log to backend export_history table
-      try {
-        await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'video',
-            format: videoFormat,
-            resolution: `${videoRatio} 60fps`,
-            model_id: currentModel.id,
-          }),
-        });
-      } catch {}
+      const exportDuration = animation?.duration || 10;
+      await onExportVideo(exportFps, exportDuration, videoFormat, videoRatio, videoTransparentBg);
       onClose();
     } catch (err) {
       console.error(err);
@@ -132,68 +90,86 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Top Header */}
-        <div className="p-4 border-b border-[#262626] flex items-center justify-between bg-[#0D0D0D]">
-          {/* Tabs: IMAGES | VIDEO */}
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => setActiveTab('image')}
-              className={`text-xs font-semibold pb-1 tracking-tight transition-colors relative cursor-pointer ${
-                activeTab === 'image' ? 'text-white' : 'text-[#737373] hover:text-[#ECECEC]'
-              }`}
-            >
-              <span>IMAGES</span>
-              {activeTab === 'image' && (
-                <div className="absolute -bottom-4 left-0 right-0 h-0.5 bg-white" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('video')}
-              className={`text-xs font-semibold pb-1 tracking-tight transition-colors relative cursor-pointer ${
-                activeTab === 'video' ? 'text-white' : 'text-[#737373] hover:text-[#ECECEC]'
-              }`}
-            >
-              <span>VIDEO</span>
-              {activeTab === 'video' && (
-                <div className="absolute -bottom-4 left-0 right-0 h-0.5 bg-white" />
-              )}
-            </button>
-          </div>
-
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
+          {/* Backdrop with smooth fade */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
             onClick={onClose}
-            className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+          />
 
-        {/* Freemium Banner if User is on FREE Plan */}
-        {!isPro && (
-          <div className="p-3.5 bg-gradient-to-r from-[#201013] to-[#171214] border-b border-[#EF4444]/30 flex items-start gap-3">
-            <div className="p-1.5 rounded-lg bg-[#EF4444]/20 text-[#EF4444] mt-0.5 shrink-0">
-              <Lock className="w-4 h-4" />
-            </div>
-            <div className="flex-1 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-white">Fitur Export Khusus PRO</span>
-                <span className="text-[10px] px-1.5 py-0.2 bg-[#EF4444] text-white font-bold rounded">
-                  Rp249.000/bln
-                </span>
+          {/* Modal Dialog Card with smooth spring scale */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 8 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="w-full max-w-md bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col z-10"
+          >
+            {/* Top Header */}
+            <div className="p-4 border-b border-[#262626] flex items-center justify-between bg-[#0D0D0D]">
+              {/* Tabs: IMAGES | VIDEO */}
+              <div className="flex items-center gap-6">
+                <button
+                  onClick={() => setActiveTab('image')}
+                  className={`text-xs font-semibold pb-1 tracking-tight transition-colors relative cursor-pointer flex items-center gap-1.5 ${
+                    activeTab === 'image' ? 'text-white' : 'text-[#737373] hover:text-[#ECECEC]'
+                  }`}
+                >
+                  <span>IMAGES</span>
+                  {activeTab === 'image' && (
+                    <div className="absolute -bottom-4 left-0 right-0 h-0.5 bg-white" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('video')}
+                  className={`text-xs font-semibold pb-1 tracking-tight transition-colors relative cursor-pointer flex items-center gap-1.5 ${
+                    activeTab === 'video' ? 'text-white' : 'text-[#737373] hover:text-[#ECECEC]'
+                  }`}
+                >
+                  <span>VIDEO</span>
+                  {activeTab === 'video' && (
+                    <div className="absolute -bottom-4 left-0 right-0 h-0.5 bg-white" />
+                  )}
+                </button>
               </div>
-              <p className="text-[11px] text-[#A3A3A3] mt-0.5 leading-relaxed">
-                Paket FREE bebas menggunakan semua fitur editor & 3D viewer, namun tidak dapat melakukan export file. Upgrade ke PRO untuk mengunduh karya Anda.
-              </p>
+
+              <button
+                onClick={onClose}
+                className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          </div>
-        )}
 
         {/* Tab 1: IMAGE */}
         {activeTab === 'image' && (
           <div className="p-5 space-y-4 text-xs">
+            {/* Free Plan Lock Notice */}
+            {!isPro && (
+              <div className="px-3.5 py-2.5 rounded-lg bg-[#181818] border border-[#262626] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-[#D4D4D4]">
+                  <Lock className="w-3.5 h-3.5 text-[#da0a2c] shrink-0" />
+                  <span>Fitur export dikunci</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenPro();
+                  }}
+                  className="text-[#da0a2c] hover:underline font-semibold text-[11px] shrink-0 cursor-pointer"
+                >
+                  Upgrade
+                </button>
+              </div>
+            )}
             {/* Format selection */}
             <div>
               <label className="text-[#A3A3A3] block mb-2 font-medium">Format</label>
@@ -223,7 +199,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
             </div>
 
-            {/* Ratio selection */}
+            {/* Export Aspect Ratio selection */}
             <div>
               <label className="text-[#A3A3A3] block mb-2 font-medium">Ratio</label>
               <div className="grid grid-cols-4 gap-2">
@@ -300,11 +276,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
             {/* CTA Button */}
             <div className="pt-3">
-              {isPro ? (
+              {!isPro ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenPro();
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-[#da0a2c] hover:bg-[#b80825] text-white font-medium transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <span>Upgrade Sekarang</span>
+                </button>
+              ) : (
                 <button
                   onClick={handleTriggerImageExport}
                   disabled={isExportingImage}
-                  className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
+                  className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-colors flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer active:scale-98"
                 >
                   {isExportingImage ? (
                     <>
@@ -318,14 +305,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     </>
                   )}
                 </button>
-              ) : (
-                <button
-                  onClick={() => handleProPaywallTrigger('Image')}
-                  className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/40 cursor-pointer active:scale-95"
-                >
-                  <Crown className="w-4 h-4" />
-                  <span>Upgrade ke PRO untuk Export — Rp249.000 / bln</span>
-                </button>
               )}
             </div>
           </div>
@@ -334,6 +313,25 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* Tab 2: VIDEO */}
         {activeTab === 'video' && (
           <div className="p-5 space-y-4 text-xs">
+            {/* Free Plan Lock Notice */}
+            {!isPro && (
+              <div className="px-3.5 py-2.5 rounded-lg bg-[#181818] border border-[#262626] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-[#D4D4D4]">
+                  <Lock className="w-3.5 h-3.5 text-[#da0a2c] shrink-0" />
+                  <span>Fitur export dikunci</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenPro();
+                  }}
+                  className="text-[#da0a2c] hover:underline font-semibold text-[11px] shrink-0 cursor-pointer"
+                >
+                  Upgrade
+                </button>
+              </div>
+            )}
             {/* Format selection */}
             <div>
               <label className="text-[#A3A3A3] block mb-2 font-medium">Format</label>
@@ -438,22 +436,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </label>
             )}
 
-            {/* Turntable duration */}
-            <div>
-              <div className="flex justify-between text-[#A3A3A3] mb-1">
-                <span className="font-medium">Duration</span>
-                <span className="font-mono text-white">{videoDuration}s</span>
-              </div>
-              <input
-                type="range"
-                min={2}
-                max={20}
-                step={1}
-                value={videoDuration}
-                disabled={isExportingVideo}
-                onChange={(e) => setVideoDuration(parseInt(e.target.value))}
-                className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white disabled:opacity-50"
-              />
+            {/* Turntable duration summary badge */}
+            <div className="flex items-center justify-between text-xs py-2 px-3 rounded-lg bg-[#181818] border border-[#262626]">
+              <span className="text-[#A3A3A3]">Duration</span>
+              <span className="font-mono text-white font-semibold">{animation?.duration || 10}s</span>
             </div>
 
             {/* Video progress indicator if recording */}
@@ -470,11 +456,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
             {/* Video CTA */}
             <div className="pt-2">
-              {isPro ? (
+              {!isPro ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenPro();
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-[#da0a2c] hover:bg-[#b80825] text-white font-medium transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <span>Upgrade Sekarang</span>
+                </button>
+              ) : (
                 <button
                   onClick={handleTriggerVideoExport}
                   disabled={isExportingVideo}
-                  className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
+                  className="w-full py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition-colors flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer active:scale-98"
                 >
                   {isExportingVideo ? (
                     <>
@@ -484,23 +481,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      <span>Export Video 360°</span>
+                      <span>Export Video</span>
                     </>
                   )}
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleProPaywallTrigger('Video 360°')}
-                  className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/40 cursor-pointer active:scale-95"
-                >
-                  <Crown className="w-4 h-4" />
-                  <span>Upgrade ke PRO untuk Export — Rp249.000 / bln</span>
                 </button>
               )}
             </div>
           </div>
         )}
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };

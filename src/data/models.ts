@@ -11,7 +11,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/01.O-Neck.svg',
     category: 'Round Neck',
     description: 'Classic circular crew-neck athletic jersey with contoured raglan sleeves.',
-    tier: 'free', // 1 Model Jersey for FREE users
   },
   {
     id: '02-v-neck',
@@ -23,7 +22,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/02.V-Neck.svg',
     category: 'V-Neck',
     description: 'Sharp athletic V-neck cut optimized for high-performance teamwear.',
-    tier: 'pro',
   },
   {
     id: '03-v-flat',
@@ -35,7 +33,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/03.V-Flat.svg',
     category: 'V-Neck',
     description: 'Flat-ribbed V-collar construction with seamless front finish.',
-    tier: 'pro',
   },
   {
     id: '04-v-cross',
@@ -47,7 +44,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/04.V-Cross.svg',
     category: 'V-Neck',
     description: 'Distinctive overlapping crossover V-neck styling with reinforced stitching.',
-    tier: 'pro',
   },
   {
     id: '05-v-casual',
@@ -59,7 +55,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/05.V-Casual.svg',
     category: 'Casual Fit',
     description: 'Relaxed fit V-neck jersey with subtle collar drape and modern proportions.',
-    tier: 'pro',
   },
   {
     id: '06-v-flat-casual',
@@ -71,7 +66,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/06.V-Flat-Casual.svg',
     category: 'Casual Fit',
     description: 'Contemporary flat collar blend with relaxed street-sport silhouette.',
-    tier: 'pro',
   },
   {
     id: '07-polo-v1',
@@ -83,7 +77,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/07.Polo-V1.svg',
     category: 'Polo Collared',
     description: 'Structured polo collar jersey with neat button placket and ribbed cuffs.',
-    tier: 'pro',
   },
   {
     id: '08-polo-v2',
@@ -95,7 +88,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/08.Polo-V2.svg',
     category: 'Polo Collared',
     description: 'Modern mandarin/stand-up polo variation with aerodynamic lines.',
-    tier: 'pro',
   },
   {
     id: '09-v-round',
@@ -107,7 +99,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/09.V-Round.svg',
     category: 'Hybrid Neck',
     description: 'Ergonomic hybrid curved collar combining round base with subtle V notch.',
-    tier: 'pro',
   },
   {
     id: '10-casual-neck',
@@ -119,73 +110,6 @@ export const JERSEY_MODELS: JerseyModel[] = [
     externalUvMapUrl: 'https://raw.githubusercontent.com/mirzajirong/3d-generator-sep-main/119ceccd41855da0fb55f2b865e40b3d59749e45/10.Casual-Neck.svg',
     category: 'Casual Fit',
     description: 'Minimalist streetwear athletic cut with ultra-clean collar finishing.',
-    tier: 'pro',
-  },
-];
-
-export const HANGER_MODELS: JerseyModel[] = [
-  {
-    id: 'hanger-classic-wood',
-    name: 'Classic Wooden Hanger',
-    modelUrl: '/models/01.O-Neck.glb',
-    fallbackUrl: 'https://cdn.editorsuite.cloud/01.O-Neck.glb',
-    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/01.O-Neck.png',
-    uvMapUrl: '/models/01.O-Neck.svg',
-    category: '3D Hanger',
-    description: 'Display jersey draped on a contoured luxury natural wooden coat hanger.',
-  },
-  {
-    id: 'hanger-matte-black',
-    name: 'Matte Black Studio Hanger',
-    modelUrl: '/models/02.V-Neck.glb',
-    fallbackUrl: 'https://cdn.editorsuite.cloud/02.V-Neck.glb',
-    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/02.V-Neck.png',
-    uvMapUrl: '/models/02.V-Neck.svg',
-    category: '3D Hanger',
-    description: 'Modern minimalist matte dark retail display hanger with slim swivel hook.',
-  },
-  {
-    id: 'hanger-wire-minimal',
-    name: 'Industrial Metal Hanger',
-    modelUrl: '/models/05.V-Casual.glb',
-    fallbackUrl: 'https://cdn.editorsuite.cloud/05.V-Casual.glb',
-    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/05.V-Casual.png',
-    uvMapUrl: '/models/05.V-Casual.svg',
-    category: '3D Hanger',
-    description: 'Ultra-clean industrial metallic hanger silhouette for studio apparel showcase.',
-  },
-];
-
-export const MANNEQUIN_MODELS: JerseyModel[] = [
-  {
-    id: 'mannequin-athletic-torso',
-    name: 'Athletic Male Torso',
-    modelUrl: '/models/01.O-Neck.glb',
-    fallbackUrl: 'https://cdn.editorsuite.cloud/01.O-Neck.glb',
-    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/01.O-Neck.png',
-    uvMapUrl: '/models/01.O-Neck.svg',
-    category: '3D Mannequin',
-    description: 'Sculpted muscular athletic torso mannequin providing dynamic sportswear fit.',
-  },
-  {
-    id: 'mannequin-pro-stand',
-    name: 'Sport Display Mannequin',
-    modelUrl: '/models/07.Polo-V1.glb',
-    fallbackUrl: 'https://cdn.editorsuite.cloud/07.Polo-V1.glb',
-    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/07.Polo-V1.png',
-    uvMapUrl: '/models/07.Polo-V1.svg',
-    category: '3D Mannequin',
-    description: 'High-end retail sportswear showroom mannequin with ergonomic posture.',
-  },
-  {
-    id: 'mannequin-ghost-form',
-    name: 'Ghost Invisible Mannequin',
-    modelUrl: '/models/09.V-Round.glb',
-    fallbackUrl: 'https://cdn.editorsuite.cloud/09.V-Round.glb',
-    thumbnailUrl: 'https://cloud.editorsuite.id/resource-app/thumbnail/09.V-Round.png',
-    uvMapUrl: '/models/09.V-Round.svg',
-    category: '3D Mannequin',
-    description: 'Hollow invisible neck & shoulder form highlighting fabric cut and collar geometry.',
   },
 ];
 

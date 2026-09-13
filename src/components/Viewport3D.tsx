@@ -83,6 +83,7 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
     // Dynamic Materials & Textures
     const activeMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
     const textureGeneratorRef = useRef<JerseyTextureGenerator | null>(null);
+    const textureRafRef = useRef<number | null>(null);
 
     // Lights
     const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
@@ -93,6 +94,7 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [loadProgress, setLoadProgress] = useState<number>(0);
+    const hasMountedInitialModelRef = useRef<boolean>(false);
 
     // Turntable animation references
     const [currentRotationY, setCurrentRotationY] = useState<number>(0);
@@ -269,9 +271,13 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         if (!container || !renderer || !camera) return;
         const newW = container.clientWidth;
         const newH = container.clientHeight;
+        if (newW <= 0 || newH <= 0) return;
         camera.aspect = newW / newH;
         camera.updateProjectionMatrix();
-        renderer.setSize(newW, newH);
+        renderer.setSize(newW, newH, false);
+        if (sceneRef.current) {
+          renderer.render(sceneRef.current, camera);
+        }
       });
       resizeObserver.observe(container);
 
@@ -309,18 +315,6 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         });
       };
 
-      // 1. Remove existing model group if present
-      if (modelGroupRef.current) {
-        removeModelHierarchy(modelGroupRef.current);
-        modelGroupRef.current = null;
-      }
-
-      // 2. Also proactively scan and purge any leftover model groups by name tag
-      const existingModelObj = scene.getObjectByName('ACTIVE_JERSEY_MODEL');
-      if (existingModelObj) {
-        removeModelHierarchy(existingModelObj);
-      }
-
       const loader = new GLTFLoader();
 
       const loadModelWithFallback = (targetUrl: string, isRetry: boolean = false) => {
@@ -342,8 +336,15 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
               return;
             }
 
-            // Ensure no other model exists in the scene before mounting
+            // Seamless Swap: Capture previous rotation and remove old model right before mounting new one
+            let preservedRotationX = (transform.rotationX * Math.PI) / 180;
+            let preservedRotationY = currentRotationY !== 0 ? currentRotationY : (transform.rotationY * Math.PI) / 180;
+            let preservedRotationZ = (transform.rotationZ * Math.PI) / 180;
+
             if (modelGroupRef.current) {
+              preservedRotationX = modelGroupRef.current.rotation.x;
+              preservedRotationY = modelGroupRef.current.rotation.y;
+              preservedRotationZ = modelGroupRef.current.rotation.z;
               removeModelHierarchy(modelGroupRef.current);
               modelGroupRef.current = null;
             }
@@ -376,10 +377,8 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
             scene.add(group);
             modelGroupRef.current = group;
 
-            // Apply transforms
-            group.rotation.x = (transform.rotationX * Math.PI) / 180;
-            group.rotation.y = (transform.rotationY * Math.PI) / 180;
-            group.rotation.z = (transform.rotationZ * Math.PI) / 180;
+            // Apply preserved transforms seamlessly
+            group.rotation.set(preservedRotationX, preservedRotationY, preservedRotationZ);
 
             // Inspect and prepare materials for all meshes
             root.traverse((child) => {
@@ -403,8 +402,14 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
               }
             });
 
+            hasMountedInitialModelRef.current = true;
+
             // Trigger texture update with current settings across all meshes
             updateTexture();
+
+            if (rendererRef.current && cameraRef.current) {
+              rendererRef.current.render(scene, cameraRef.current);
+            }
 
             setIsLoading(false);
             setLoadProgress(100);
@@ -467,7 +472,20 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
     };
 
     useEffect(() => {
-      updateTexture();
+      if (textureRafRef.current !== null) {
+        cancelAnimationFrame(textureRafRef.current);
+      }
+      textureRafRef.current = requestAnimationFrame(() => {
+        textureRafRef.current = null;
+        updateTexture();
+      });
+
+      return () => {
+        if (textureRafRef.current !== null) {
+          cancelAnimationFrame(textureRafRef.current);
+          textureRafRef.current = null;
+        }
+      };
     }, [
       mockup.baseColor,
       mockup.roughness,
@@ -1049,9 +1067,17 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
       >
         <canvas ref={canvasRef} className="w-full h-full outline-none block" />
 
-        {/* Loading Overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-[#0D0D0D]/80 backdrop-blur-md flex flex-col items-center justify-center z-20">
+        {/* Subtle Non-Blocking Loading Badge when switching models (prevents 3D model from disappearing) */}
+        {isLoading && hasMountedInitialModelRef.current && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#161616]/90 border border-[#333333] px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xl z-20 pointer-events-none transition-opacity">
+            <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+            <span className="text-xs text-white font-medium">Switching to {currentModel.name}...</span>
+          </div>
+        )}
+
+        {/* Initial Cold Boot Loading Screen (only shown before any 3D model exists) */}
+        {isLoading && !hasMountedInitialModelRef.current && (
+          <div className="absolute inset-0 bg-[#0D0D0D] flex flex-col items-center justify-center z-20">
             <div className="w-12 h-12 rounded-2xl bg-[#1A1A1A] border border-[#333333] flex items-center justify-center mb-4 shadow-xl">
               <Loader2 className="w-6 h-6 text-white animate-spin" />
             </div>

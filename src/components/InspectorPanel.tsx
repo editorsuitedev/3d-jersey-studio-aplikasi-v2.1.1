@@ -25,6 +25,7 @@ import {
 import { ENVIRONMENT_PRESETS } from '../data/models';
 import { InteractiveUVCanvas } from './InteractiveUVCanvas';
 import { HexColorInput } from './HexColorInput';
+import { SliderWithInput } from './SliderWithInput';
 
 interface InspectorPanelProps {
   currentModel: JerseyModel;
@@ -180,47 +181,29 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
               {activeAccordion === 'material' && (
                 <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
-                  {/* Roughness Slider */}
-                  <div>
-                    <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1.5">
-                      <span>Roughness</span>
-                      <span className="font-mono text-white">
-                        {Math.round(mockup.roughness * 100)}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.05}
-                      max={1.0}
-                      step={0.01}
-                      value={mockup.roughness}
-                      onChange={(e) =>
-                        onChangeMockup({ roughness: parseFloat(e.target.value) })
-                      }
-                      className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
+                  {/* Roughness Slider with numeric custom input */}
+                  <SliderWithInput
+                    label="Roughness"
+                    value={mockup.roughness}
+                    min={0.05}
+                    max={1.0}
+                    step={0.01}
+                    decimals={2}
+                    useComma={true}
+                    onChange={(val) => onChangeMockup({ roughness: val })}
+                  />
 
-                  {/* Metalness / Sheen Slider */}
-                  <div>
-                    <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1.5">
-                      <span>Sheen</span>
-                      <span className="font-mono text-white">
-                        {Math.round(mockup.metalness * 100)}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.0}
-                      max={1.0}
-                      step={0.01}
-                      value={mockup.metalness}
-                      onChange={(e) =>
-                        onChangeMockup({ metalness: parseFloat(e.target.value) })
-                      }
-                      className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
+                  {/* Metalness / Sheen Slider with numeric custom input */}
+                  <SliderWithInput
+                    label="Sheen"
+                    value={mockup.metalness}
+                    min={0.0}
+                    max={1.0}
+                    step={0.01}
+                    decimals={2}
+                    useComma={true}
+                    onChange={(val) => onChangeMockup({ metalness: val })}
+                  />
                 </div>
               )}
             </div>
@@ -294,26 +277,17 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                         />
                       </div>
 
-                      {/* Gradient Angle Slider */}
-                      <div>
-                        <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1">
-                          <span>Gradient Angle</span>
-                          <span className="font-mono text-white">
-                            {background.gradientAngle ?? 135}°
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={360}
-                          step={5}
-                          value={background.gradientAngle ?? 135}
-                          onChange={(e) =>
-                            onChangeBackground({ gradientAngle: parseInt(e.target.value) })
-                          }
-                          className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                        />
-                      </div>
+                      {/* Gradient Angle Slider with custom input */}
+                      <SliderWithInput
+                        label="Gradient Angle"
+                        value={background.gradientAngle ?? 135}
+                        min={0}
+                        max={360}
+                        step={5}
+                        decimals={0}
+                        unit="°"
+                        onChange={(val) => onChangeBackground({ gradientAngle: Math.round(val) })}
+                      />
                     </div>
                   )}
 
@@ -422,45 +396,28 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* Intensity */}
-                  <div>
-                    <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1">
-                      <span>Intensity</span>
-                      <span className="font-mono text-white">
-                        {lighting.environmentIntensity.toFixed(2)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={3.0}
-                      step={0.05}
-                      value={lighting.environmentIntensity}
-                      onChange={(e) =>
-                        onChangeLighting({ environmentIntensity: parseFloat(e.target.value) })
-                      }
-                      className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
+                  {/* Environment Light Intensity with numeric input */}
+                  <SliderWithInput
+                    label="Intensity"
+                    value={lighting.environmentIntensity}
+                    min={0.2}
+                    max={3.0}
+                    step={0.05}
+                    decimals={2}
+                    onChange={(val) => onChangeLighting({ environmentIntensity: val })}
+                  />
 
-                  {/* Light Rotation */}
-                  <div>
-                    <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1">
-                      <span>Light Angle</span>
-                      <span className="font-mono text-white">{lighting.environmentRotation}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={360}
-                      step={5}
-                      value={lighting.environmentRotation}
-                      onChange={(e) =>
-                        onChangeLighting({ environmentRotation: parseInt(e.target.value) })
-                      }
-                      className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
+                  {/* Light Rotation with numeric input */}
+                  <SliderWithInput
+                    label="Light Angle"
+                    value={lighting.environmentRotation}
+                    min={0}
+                    max={360}
+                    step={5}
+                    decimals={0}
+                    unit="°"
+                    onChange={(val) => onChangeLighting({ environmentRotation: Math.round(val) })}
+                  />
                 </div>
               )}
             </div>
@@ -501,25 +458,15 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   </div>
 
                   {scene.floorShadow !== 'none' && (
-                    <div>
-                      <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1">
-                        <span>Shadow Opacity</span>
-                        <span className="font-mono text-white">
-                          {Math.round(scene.shadowIntensity * 100)}%
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.1}
-                        max={1.0}
-                        step={0.05}
-                        value={scene.shadowIntensity}
-                        onChange={(e) =>
-                          onChangeScene({ shadowIntensity: parseFloat(e.target.value) })
-                        }
-                        className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                      />
-                    </div>
+                    <SliderWithInput
+                      label="Shadow Opacity"
+                      value={scene.shadowIntensity}
+                      min={0.1}
+                      max={1.0}
+                      step={0.05}
+                      decimals={2}
+                      onChange={(val) => onChangeScene({ shadowIntensity: val })}
+                    />
                   )}
                 </div>
               )}
@@ -544,24 +491,17 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
               {activeAccordion === 'rotation' && (
                 <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
-                  {/* Rotation Y */}
-                  <div>
-                    <div className="flex justify-between text-[11px] text-[#A3A3A3] mb-1">
-                      <span>Rotation Y (Yaw)</span>
-                      <span className="font-mono text-white">{Math.round(transform.rotationY)}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={-180}
-                      max={180}
-                      step={1}
-                      value={transform.rotationY}
-                      onChange={(e) =>
-                        onChangeTransform({ rotationY: parseFloat(e.target.value) })
-                      }
-                      className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
+                  {/* Rotation Y with numeric input */}
+                  <SliderWithInput
+                    label="Rotation Y"
+                    value={transform.rotationY}
+                    min={-180}
+                    max={180}
+                    step={1}
+                    decimals={0}
+                    unit="°"
+                    onChange={(val) => onChangeTransform({ rotationY: val })}
+                  />
 
                   {/* Reset Button */}
                   <button

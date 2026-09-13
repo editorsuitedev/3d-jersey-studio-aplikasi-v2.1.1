@@ -12,6 +12,13 @@ export class JerseyTextureGenerator {
   private imageCache: Map<string, HTMLImageElement> = new Map();
   private customFullImg: HTMLImageElement | null = null;
 
+  // Cached base background (base color + fabric weave)
+  private baseCanvas: HTMLCanvasElement;
+  private baseCtx: CanvasRenderingContext2D;
+  private lastBaseColor: string | null = null;
+  private lastCustomImg: HTMLImageElement | null = null;
+  private weavePattern: CanvasPattern | null = null;
+
   constructor(size = 4096) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = size;
@@ -21,6 +28,29 @@ export class JerseyTextureGenerator {
       throw new Error('Could not get 2D context');
     }
     this.ctx = context;
+
+    // Initialize base background canvas cache
+    this.baseCanvas = document.createElement('canvas');
+    this.baseCanvas.width = size;
+    this.baseCanvas.height = size;
+    const baseContext = this.baseCanvas.getContext('2d');
+    if (!baseContext) {
+      throw new Error('Could not get base canvas 2D context');
+    }
+    this.baseCtx = baseContext;
+
+    // Create 8x8 micro fabric weave pattern once
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = 8;
+    patternCanvas.height = 8;
+    const pCtx = patternCanvas.getContext('2d');
+    if (pCtx) {
+      pCtx.fillStyle = 'rgba(0, 0, 0, 0.025)';
+      pCtx.fillRect(0, 0, 4, 8);
+      pCtx.fillRect(0, 0, 8, 4);
+      this.weavePattern = this.baseCtx.createPattern(patternCanvas, 'repeat');
+    }
+
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.flipY = false;
@@ -68,10 +98,12 @@ export class JerseyTextureGenerator {
   }
 
   /**
-   * Preloads all layer images in mockup settings
+   * Preloads all layer images in mockup settings (skips already cached images immediately)
    */
   public async prepareLayers(layers: DesignLayer[]): Promise<void> {
-    const promises = layers.map((layer) => this.preloadImage(layer.dataUrl));
+    const unready = layers.filter((l) => !this.imageCache.has(l.dataUrl));
+    if (unready.length === 0) return;
+    const promises = unready.map((layer) => this.preloadImage(layer.dataUrl));
     await Promise.all(promises);
   }
 
@@ -79,22 +111,38 @@ export class JerseyTextureGenerator {
     const { width, height } = this.canvas;
     const ctx = this.ctx;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
+    const currentBaseColor = settings.baseColor || '#FFFFFF';
+    const isBaseDirty =
+      this.lastBaseColor !== currentBaseColor ||
+      this.lastCustomImg !== this.customFullImg;
 
-    // 1. If user uploaded a full custom texture, draw that as primary base
-    if (this.customFullImg) {
-      ctx.drawImage(this.customFullImg, 0, 0, width, height);
-    } else {
-      // Background base fill - covers 100% of the canvas so all meshes are colored
-      ctx.fillStyle = settings.baseColor || '#FFFFFF';
-      ctx.fillRect(0, 0, width, height);
+    // 1. Update cached base background canvas only when base color or custom full texture actually changed
+    if (isBaseDirty) {
+      this.lastBaseColor = currentBaseColor;
+      this.lastCustomImg = this.customFullImg;
 
-      // Subtle fabric weave texture
-      this.drawFabricWeave(width, height);
+      this.baseCtx.clearRect(0, 0, width, height);
+
+      if (this.customFullImg) {
+        this.baseCtx.drawImage(this.customFullImg, 0, 0, width, height);
+      } else {
+        // Base fill
+        this.baseCtx.fillStyle = currentBaseColor;
+        this.baseCtx.fillRect(0, 0, width, height);
+
+        // Fast fabric weave pattern fill
+        if (this.weavePattern) {
+          this.baseCtx.fillStyle = this.weavePattern;
+          this.baseCtx.fillRect(0, 0, width, height);
+        }
+      }
     }
 
-    // 2. Render all active design layers from bottom to top
+    // 2. Clear main canvas and blit the cached base canvas in a single instant operation
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(this.baseCanvas, 0, 0, width, height);
+
+    // 3. Render all active design layers from bottom to top
     if (settings.layers && settings.layers.length > 0) {
       for (const layer of settings.layers) {
         if (!layer.visible) continue;
@@ -122,7 +170,7 @@ export class JerseyTextureGenerator {
       }
     }
 
-    // 3. Optional UV Wireframe overlay
+    // 4. Optional UV Wireframe overlay
     if (showUvOverlay && uvSvgImage) {
       ctx.save();
       ctx.globalAlpha = 0.45;
@@ -131,19 +179,5 @@ export class JerseyTextureGenerator {
     }
 
     this.texture.needsUpdate = true;
-  }
-
-  private drawFabricWeave(w: number, h: number): void {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.025)';
-    const step = 4;
-    for (let x = 0; x < w; x += step * 2) {
-      ctx.fillRect(x, 0, step, h);
-    }
-    for (let y = 0; y < h; y += step * 2) {
-      ctx.fillRect(0, y, w, step);
-    }
-    ctx.restore();
   }
 }

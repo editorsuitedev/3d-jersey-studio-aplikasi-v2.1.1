@@ -7,6 +7,7 @@ import {
   X,
   Menu,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { ActiveTool } from '../types';
 
 // Custom Lucide-compliant Hanger icon
@@ -44,7 +45,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: Shirt,
       desc: 'Browse soccer jersey mockups & cuts',
       active: isDrawerOpen && drawerCategory === 'jersey',
-      isComingSoon: false,
     },
     {
       id: 'hanger' as ActiveTool,
@@ -53,7 +53,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: Hanger,
       desc: 'Wooden & plastic apparel hangers',
       active: isDrawerOpen && drawerCategory === 'hanger',
-      isComingSoon: true,
     },
     {
       id: 'mannequin' as ActiveTool,
@@ -62,7 +61,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: PersonStanding,
       desc: 'Athletic torso & display mannequins',
       active: isDrawerOpen && drawerCategory === 'mannequin',
-      isComingSoon: true,
     },
   ];
 
@@ -87,31 +85,23 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                 title={item.label}
               >
                 <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-                {item.isComingSoon && (
-                  <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
-                )}
                 {/* Tooltip on desktop only */}
                 <div className="hidden md:block absolute left-14 bg-[#1F1F1F] text-white text-xs px-2.5 py-1 rounded border border-[#3E3E3E] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                   {item.label}
-                  {item.isComingSoon && (
-                    <span className="ml-1.5 text-[10px] font-bold text-[#EF4444]">
-                      (Soon)
-                    </span>
-                  )}
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Bottom info */}
+        {/* Bottom info without scale on hover */}
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={onOpenHelp}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-[#595959] hover:text-[#D4D4D4] hover:bg-[#181818] transition-all relative group cursor-pointer"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#1f1f1f] transition-colors relative group cursor-pointer active:scale-95"
             title="Info"
           >
-            <HelpCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+            <HelpCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#737373] group-hover:text-white transition-colors" />
             <div className="hidden md:block absolute left-14 bg-[#1F1F1F] text-white text-xs px-2.5 py-1 rounded border border-[#3E3E3E] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
               Info
             </div>
@@ -119,118 +109,22 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         </div>
       </aside>
 
-      {/* 2. Mobile Floating Button in Viewport for 3D Model Catalog */}
+      {/* 2. Mobile Floating Hamburger Button in Viewport */}
       {onToggleMobileMenu && (
         <div className="md:hidden absolute top-3 left-3 z-20">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.9 }}
+            animate={{ rotate: isDrawerOpen ? 90 : 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 22 }}
             onClick={onToggleMobileMenu}
-            className="h-9 px-2.5 rounded-xl bg-[#181818]/90 border border-[#383838] shadow-2xl backdrop-blur-md flex items-center gap-1.5 text-[#D4D4D4] hover:text-white active:scale-95 cursor-pointer group"
-            title="Pilih Model 3D & Kategori"
+            className="w-9 h-9 rounded-xl bg-[#181818]/90 border border-[#383838] shadow-2xl backdrop-blur-md flex items-center justify-center text-[#D4D4D4] hover:text-white cursor-pointer"
+            title={isDrawerOpen ? 'Close 3D Models' : 'Open 3D Models'}
           >
-            <Menu className="w-4 h-4 text-[#A3A3A3] group-hover:text-white" />
-            <span className="text-xs font-semibold text-[#ECECEC] tracking-tight">3D Model</span>
-          </button>
+            {isDrawerOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </motion.button>
         </div>
       )}
-
-      {/* 3. Mobile Slide-out Menu Drawer */}
-      {/* Backdrop */}
-      <div
-        onClick={onCloseMobileMenu}
-        className={`fixed inset-0 bg-black/70 z-50 md:hidden backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
-          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      />
-
-      {/* Drawer Content */}
-      <div
-        className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#121212] border-r border-[#262626] z-50 flex flex-col justify-between p-4 shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
-        }`}
-      >
-        <div>
-          {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
-            <div className="flex items-center gap-2">
-              <img
-                src="/logo-editorsuite.svg"
-                alt="STUDIO"
-                className="h-8 w-auto object-contain"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://editorsuite.cloud/logo-editorsuite.svg';
-                }}
-              />
-              <span className="text-xs font-bold tracking-tight text-[#ECECEC]">
-                3D CATALOGS
-              </span>
-            </div>
-            <button
-              onClick={onCloseMobileMenu}
-              className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
-              title="Close Menu"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Tool Category List */}
-          <div className="mt-4 flex flex-col gap-2">
-            {tools.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.active;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onCloseMobileMenu?.();
-                    onOpenDrawerCategory(item.category);
-                  }}
-                  className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-98 cursor-pointer ${
-                    isActive
-                      ? 'bg-[#262626] border-[#595959] text-white'
-                      : 'bg-[#181818] border-[#2A2A2A] text-[#D4D4D4] hover:bg-[#222222] hover:border-[#3E3E3E]'
-                  }`}
-                >
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                      isActive ? 'bg-white text-black' : 'bg-[#242424] text-[#ECECEC]'
-                    }`}
-                  >
-                    <Icon className="w-4.5 h-4.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold tracking-tight text-[#ECECEC]">
-                        {item.label}
-                      </span>
-                      {item.isComingSoon && (
-                        <span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold tracking-wider uppercase bg-[#EF4444]/15 border border-[#EF4444]/40 text-[#EF4444] shrink-0">
-                          SOON
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-[#737373] truncate">{item.desc}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bottom Info Button */}
-        <div className="pt-3 border-t border-[#262626]">
-          <button
-            onClick={() => {
-              onCloseMobileMenu?.();
-              onOpenHelp();
-            }}
-            className="w-full py-2.5 px-3 rounded-lg bg-[#181818] hover:bg-[#222222] border border-[#2A2A2A] text-[#A3A3A3] hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <HelpCircle className="w-4 h-4" />
-            <span>Help & Shortcuts</span>
-          </button>
-        </div>
-      </div>
     </>
   );
 };

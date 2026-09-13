@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { X, MousePointer, RotateCw, ZoomIn, Move, Sparkles, Video, ExternalLink } from 'lucide-react';
 
 interface HelpModalProps {
@@ -7,21 +8,33 @@ interface HelpModalProps {
 }
 
 export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-4 border-b border-[#262626] flex items-center justify-between bg-[#0D0D0D]">
-          <h2 className="text-sm font-bold tracking-wider text-white">INFO</h2>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none"
+        >
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 8 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            className="w-full max-w-lg bg-[#141414] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            {/* Header */}
+            <div className="p-4 border-b border-[#262626] flex items-center justify-between bg-[#0D0D0D]">
+              <h2 className="text-sm font-bold tracking-wider text-white">INFO</h2>
+              <button
+                onClick={onClose}
+                className="w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
         {/* Body Content */}
         <div className="p-5 space-y-4 text-xs text-[#D4D4D4] overflow-y-auto custom-scrollbar">
@@ -130,7 +143,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Got it Button */}
+          {/* Got it Button with smooth interaction */}
           <div className="pt-1">
             <button
               onClick={onClose}
@@ -140,7 +153,9 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

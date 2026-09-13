@@ -8,7 +8,6 @@ export interface JerseyModel {
   externalUvMapUrl?: string;
   category: string;
   description: string;
-  tier?: 'free' | 'pro';
 }
 
 export type MaterialPreset = 'basic' | 'matte' | 'glossy' | 'fabric' | 'metallic';
@@ -104,3 +103,20 @@ export interface AnimationSettings {
 }
 
 export type ActiveTool = 'mockups' | 'hanger' | 'mannequin' | 'design' | 'uv_editor';
+
+export type SubscriptionPlan = 'free' | 'pro';
+export type SubscriptionStatus = 'active' | 'expired' | 'canceled';
+
+export interface UserSubscription {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  expiresAt: string | null;
+  priceMonthly: number;
+  updatedAt: string;
+}
+
+export interface UserProfile {
+  email: string;
+  name: string;
+  subscription?: UserSubscription;
+}
