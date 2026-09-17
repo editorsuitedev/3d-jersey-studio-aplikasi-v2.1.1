@@ -203,30 +203,54 @@ export default function App() {
     }
   };
 
-  // Upload New Design Layer (Multi-layer support)
+  // Upload New Design Layer with proper aspect ratio detection
   const handleUploadDesign = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
         const dataUrl = e.target.result as string;
-        const newLayerId = `layer-${Date.now()}`;
-        const newLayer: DesignLayer = {
-          id: newLayerId,
-          name: file.name.replace(/\.[^/.]+$/, ''),
-          dataUrl,
-          x: 0.28,
-          y: 0.42,
-          width: 0.3,
-          height: 0.3,
-          rotation: 0,
-          opacity: 1,
-          visible: true,
+        const img = new Image();
+        img.onload = () => {
+          const naturalW = img.naturalWidth || 1;
+          const naturalH = img.naturalHeight || 1;
+          const aspect = naturalW / naturalH;
+
+          // Target initial display size (max dimension ~0.35 of UV canvas)
+          let width = 0.35;
+          let height = 0.35;
+
+          if (aspect >= 1) {
+            // Landscape or square: maintain aspect ratio
+            height = Math.max(0.04, Math.min(1.0, width / aspect));
+          } else {
+            // Portrait: maintain aspect ratio
+            width = Math.max(0.04, Math.min(1.0, height * aspect));
+          }
+
+          const newLayerId = `layer-${Date.now()}`;
+          const newLayer: DesignLayer = {
+            id: newLayerId,
+            name: file.name.replace(/\.[^/.]+$/, ''),
+            dataUrl,
+            x: 0.3575, // Centered on front chest area
+            y: 0.38,
+            width,
+            height,
+            rotation: 0,
+            opacity: 1,
+            visible: true,
+            aspectRatio: aspect,
+            naturalWidth: naturalW,
+            naturalHeight: naturalH,
+          };
+
+          setMockup((prev) => ({
+            ...prev,
+            layers: [newLayer, ...prev.layers],
+            activeLayerId: newLayerId,
+          }));
         };
-        setMockup((prev) => ({
-          ...prev,
-          layers: [newLayer, ...prev.layers],
-          activeLayerId: newLayerId,
-        }));
+        img.src = dataUrl;
       }
     };
     reader.readAsDataURL(file);
@@ -480,6 +504,9 @@ export default function App() {
           onChangeScene={(updates) => setSceneSettings((prev) => ({ ...prev, ...updates }))}
           onChangeTransform={(updates) => setTransform((prev) => ({ ...prev, ...updates }))}
           onUploadDesign={handleUploadDesign}
+          onLiveUpdateLayers={(liveLayers) => {
+            viewportRef.current?.updateLayersLive(liveLayers);
+          }}
           onSnapCamera={(preset) => {
             viewportRef.current?.snapCamera(preset);
           }}

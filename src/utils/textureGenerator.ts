@@ -54,6 +54,12 @@ export class JerseyTextureGenerator {
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.flipY = false;
+    this.texture.wrapS = THREE.ClampToEdgeWrapping;
+    this.texture.wrapT = THREE.ClampToEdgeWrapping;
+    this.texture.offset.set(0, 0);
+    this.texture.repeat.set(1, 1);
+    this.texture.center.set(0, 0);
+    this.texture.rotation = 0;
     this.texture.generateMipmaps = true;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
     this.texture.magFilter = THREE.LinearFilter;
@@ -156,8 +162,8 @@ export class JerseyTextureGenerator {
         // Position in UV pixel coordinates
         const cx = layer.x * width;
         const cy = layer.y * height;
-        const layerW = layer.width * width;
-        const layerH = layer.height * height;
+        const boxW = layer.width * width;
+        const boxH = layer.height * height;
 
         ctx.translate(cx, cy);
 
@@ -165,7 +171,28 @@ export class JerseyTextureGenerator {
           ctx.rotate((layer.rotation * Math.PI) / 180);
         }
 
-        ctx.drawImage(img, -layerW / 2, -layerH / 2, layerW, layerH);
+        // Maintain exact aspect ratio without stretching, identical to CSS object-contain
+        let drawW = boxW;
+        let drawH = boxH;
+        const naturalW = img.naturalWidth;
+        const naturalH = img.naturalHeight;
+
+        if (naturalW > 0 && naturalH > 0 && boxW > 0 && boxH > 0) {
+          const imgAspect = naturalW / naturalH;
+          const boxAspect = boxW / boxH;
+
+          if (boxAspect > imgAspect) {
+            // Box is wider than image aspect ratio: fit height, scale width
+            drawH = boxH;
+            drawW = boxH * imgAspect;
+          } else {
+            // Box is taller than image aspect ratio: fit width, scale height
+            drawW = boxW;
+            drawH = boxW / imgAspect;
+          }
+        }
+
+        ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
         ctx.restore();
       }
     }

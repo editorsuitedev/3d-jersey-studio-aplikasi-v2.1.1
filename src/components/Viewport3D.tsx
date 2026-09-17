@@ -11,6 +11,7 @@ import {
   SceneSettings,
   TransformSettings,
   AnimationSettings,
+  DesignLayer,
 } from '../types';
 import { JerseyTextureGenerator } from '../utils/textureGenerator';
 import { ViewportGizmo } from './ViewportGizmo';
@@ -33,6 +34,7 @@ export interface Viewport3DHandle {
     onProgress: (p: number) => void
   ) => Promise<Blob>;
   snapCamera: (view: 'front' | 'back' | 'left' | 'right' | 'top') => void;
+  updateLayersLive: (layers: DesignLayer[]) => void;
 }
 
 interface Viewport3DProps {
@@ -99,6 +101,10 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
     // Turntable animation references
     const [currentRotationY, setCurrentRotationY] = useState<number>(0);
     const animationRef = useRef(animation);
+    const mockupRef = useRef(mockup);
+    useEffect(() => {
+      mockupRef.current = mockup;
+    }, [mockup]);
     const currentTimeRef = useRef(animation.currentTime);
     const lastTimelineSyncRef = useRef<number>(0);
     const isRecordingRef = useRef<boolean>(false);
@@ -461,13 +467,16 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
       // Render to texture canvas
       gen.render(mockup);
 
-      // Re-apply to all active mesh materials (ensuring 100% mesh coverage)
+      // Re-apply to all active mesh materials (ensuring 100% mesh coverage without shader recompile)
+      const tex = gen.getTexture();
       activeMaterialsRef.current.forEach((mat) => {
-        mat.map = gen.getTexture();
+        if (mat.map !== tex) {
+          mat.map = tex;
+          mat.needsUpdate = true;
+        }
         mat.color.set('#ffffff');
         mat.roughness = mockup.roughness;
         mat.metalness = mockup.metalness;
-        mat.needsUpdate = true;
       });
     };
 
@@ -728,6 +737,33 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
     // Expose Imperative Methods for Captures & Exports
     useImperativeHandle(ref, () => ({
       snapCamera: handleSnapCamera,
+
+      updateLayersLive: (liveLayers: DesignLayer[]) => {
+        const gen = textureGeneratorRef.current;
+        if (!gen) return;
+
+        // Render directly to persistent canvas texture without re-allocation
+        gen.render({ ...mockupRef.current, layers: liveLayers });
+
+        // Ensure materials map points to texture without re-linking shaders
+        const tex = gen.getTexture();
+        activeMaterialsRef.current.forEach((mat) => {
+          if (mat.map !== tex) {
+            mat.map = tex;
+            mat.needsUpdate = true;
+          }
+        });
+
+        // Trigger immediate render frame if turntable animation is not currently running
+        if (
+          !animationRef.current.isPlaying &&
+          rendererRef.current &&
+          sceneRef.current &&
+          cameraRef.current
+        ) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      },
 
       captureScreenshot: async (
         format: 'png' | 'jpeg',

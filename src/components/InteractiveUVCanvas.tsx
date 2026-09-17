@@ -5,11 +5,8 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  GripVertical,
   ChevronUp,
   ChevronDown,
-  Layers as LayersIcon,
-  Check,
 } from 'lucide-react';
 import { JerseyModel, MockupSettings, DesignLayer } from '../types';
 import { HexColorInput } from './HexColorInput';
@@ -19,6 +16,7 @@ interface InteractiveUVCanvasProps {
   mockup: MockupSettings;
   onChangeMockup: (updates: Partial<MockupSettings>) => void;
   onUploadDesign: (file: File) => void;
+  onLiveUpdateLayers?: (layers: DesignLayer[]) => void;
 }
 
 export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
@@ -26,25 +24,17 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
   mockup,
   onChangeMockup,
   onUploadDesign,
+  onLiveUpdateLayers,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const colorInputRef = useRef<HTMLInputElement>(null);
+  const layerDomMapRef = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const [showGuide, setShowGuide] = useState(true);
-  const [activeHandle, setActiveHandle] = useState<string | null>(null);
-  const [dragStart, setDragStart] = useState<{
-    startX: number;
-    startY: number;
-    layerX: number;
-    layerY: number;
-    layerW: number;
-    layerH: number;
-  } | null>(null);
 
   const activeLayer = mockup.layers.find((l) => l.id === mockup.activeLayerId) || mockup.layers[0] || null;
 
-  // Real-time smooth drag state via Ref to avoid React state lag & frame drops
+  // Real-time smooth drag session via Ref to completely bypass React re-renders on pointermove
   const dragSessionRef = useRef<{
     activeHandle: string;
     targetLayerId: string;
@@ -54,10 +44,13 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     layerY: number;
     layerW: number;
     layerH: number;
+    layerRotation: number;
+    aspectRatio: number;
+    hasMoved: boolean;
   } | null>(null);
 
+  const pendingUpdatesRef = useRef<Partial<DesignLayer> | null>(null);
   const rafIdRef = useRef<number | null>(null);
-  const pendingUpdateRef = useRef<{ layerId: string; updates: Partial<DesignLayer> } | null>(null);
   const layersRef = useRef(mockup.layers);
   layersRef.current = mockup.layers;
 
@@ -69,7 +62,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     };
   }, []);
 
-  // Helper to update a single layer
+  // Helper to update a single layer in React state
   const updateLayer = (layerId: string, updates: Partial<DesignLayer>) => {
     const nextLayers = layersRef.current.map((layer) =>
       layer.id === layerId ? { ...layer, ...updates } : layer
@@ -78,30 +71,28 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     onChangeMockup({ layers: nextLayers });
   };
 
-  // Handle Layer Drag / Resize
+  // Handle Layer Drag / Resize start
   const handlePointerDown = (e: React.PointerEvent, handleType: string, layerId: string) => {
     e.stopPropagation();
     const container = containerRef.current;
     if (!container) return;
 
-    onChangeMockup({ activeLayerId: layerId });
+    if (mockup.activeLayerId !== layerId) {
+      onChangeMockup({ activeLayerId: layerId });
+    }
 
     const targetLayer = layersRef.current.find((l) => l.id === layerId);
     if (!targetLayer) return;
 
     const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const startX = (e.clientX - rect.left) / rect.width;
     const startY = (e.clientY - rect.top) / rect.height;
 
-    setActiveHandle(handleType);
-    setDragStart({
-      startX,
-      startY,
-      layerX: targetLayer.x,
-      layerY: targetLayer.y,
-      layerW: targetLayer.width,
-      layerH: targetLayer.height,
-    });
+    const aspect = (targetLayer.aspectRatio && targetLayer.aspectRatio > 0)
+      ? targetLayer.aspectRatio
+      : (targetLayer.width / (targetLayer.height || 1)) || 1;
 
     dragSessionRef.current = {
       activeHandle: handleType,
@@ -112,11 +103,16 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
       layerY: targetLayer.y,
       layerW: targetLayer.width,
       layerH: targetLayer.height,
+      layerRotation: targetLayer.rotation || 0,
+      aspectRatio: aspect,
+      hasMoved: false,
     };
 
     try {
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (err) {}
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if pointer capture fails
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -135,53 +131,80 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     let updates: Partial<DesignLayer> | null = null;
 
     if (session.activeHandle === 'move') {
-      // Move entire layer smoothly
+      // Translation
       const newX = Math.max(0, Math.min(1, session.layerX + dx));
       const newY = Math.max(0, Math.min(1, session.layerY + dy));
       updates = { x: newX, y: newY };
     } else if (session.activeHandle === 'rotate') {
-      // Drag rotation handle relative to layer center
+      // Rotation relative to layer center
       const rad = Math.atan2(currentY - session.layerY, currentX - session.layerX);
       let deg = Math.round((rad * 180) / Math.PI) + 90;
       if (deg < 0) deg += 360;
       updates = { rotation: deg };
     } else if (session.activeHandle === 'se') {
-      // Scale from bottom-right corner up to 1.0 (4096px)
-      const newW = Math.max(0.05, Math.min(1.0, session.layerW + dx * 2));
-      const aspect = session.layerW / session.layerH || 1;
-      const newH = Math.min(1.0, newW / aspect);
+      // Scale from bottom-right corner preserving aspect ratio
+      const newW = Math.max(0.04, Math.min(1.0, session.layerW + dx * 2));
+      const newH = Math.max(0.04, Math.min(1.0, newW / session.aspectRatio));
       updates = { width: newW, height: newH };
     } else if (session.activeHandle === 'sw') {
-      // Scale from bottom-left corner up to 1.0 (4096px)
-      const newW = Math.max(0.05, Math.min(1.0, session.layerW - dx * 2));
-      const aspect = session.layerW / session.layerH || 1;
-      const newH = Math.min(1.0, newW / aspect);
+      // Scale from bottom-left corner preserving aspect ratio
+      const newW = Math.max(0.04, Math.min(1.0, session.layerW - dx * 2));
+      const newH = Math.max(0.04, Math.min(1.0, newW / session.aspectRatio));
       updates = { width: newW, height: newH };
     } else if (session.activeHandle === 'ne') {
-      // Scale from top-right corner up to 1.0 (4096px)
-      const newW = Math.max(0.05, Math.min(1.0, session.layerW + dx * 2));
-      const aspect = session.layerW / session.layerH || 1;
-      const newH = Math.min(1.0, newW / aspect);
+      // Scale from top-right corner preserving aspect ratio
+      const newW = Math.max(0.04, Math.min(1.0, session.layerW + dx * 2));
+      const newH = Math.max(0.04, Math.min(1.0, newW / session.aspectRatio));
       updates = { width: newW, height: newH };
     } else if (session.activeHandle === 'nw') {
-      // Scale from top-left corner up to 1.0 (4096px)
-      const newW = Math.max(0.05, Math.min(1.0, session.layerW - dx * 2));
-      const aspect = session.layerW / session.layerH || 1;
-      const newH = Math.min(1.0, newW / aspect);
+      // Scale from top-left corner preserving aspect ratio
+      const newW = Math.max(0.04, Math.min(1.0, session.layerW - dx * 2));
+      const newH = Math.max(0.04, Math.min(1.0, newW / session.aspectRatio));
       updates = { width: newW, height: newH };
     }
 
-    if (updates) {
-      pendingUpdateRef.current = { layerId: session.targetLayerId, updates };
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          if (pendingUpdateRef.current) {
-            updateLayer(pendingUpdateRef.current.layerId, pendingUpdateRef.current.updates);
-            pendingUpdateRef.current = null;
-          }
-          rafIdRef.current = null;
-        });
-      }
+    if (!updates) return;
+    session.hasMoved = true;
+    pendingUpdatesRef.current = updates;
+
+    // Use requestAnimationFrame for hardware-accelerated rendering without React re-render
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        const curSession = dragSessionRef.current;
+        const curUpdates = pendingUpdatesRef.current;
+        if (!curSession || !curUpdates) return;
+
+        const layerId = curSession.targetLayerId;
+
+        // 1. Direct DOM transform updates (60/120 FPS buttery smooth)
+        const domEl = layerDomMapRef.current.get(layerId);
+        if (domEl) {
+          const targetL = layersRef.current.find((l) => l.id === layerId);
+          const posX = (curUpdates.x !== undefined ? curUpdates.x : targetL?.x ?? 0.5) * 100;
+          const posY = (curUpdates.y !== undefined ? curUpdates.y : targetL?.y ?? 0.5) * 100;
+          const posW = (curUpdates.width !== undefined ? curUpdates.width : targetL?.width ?? 0.3) * 100;
+          const posH = (curUpdates.height !== undefined ? curUpdates.height : targetL?.height ?? 0.3) * 100;
+          const rot = curUpdates.rotation !== undefined ? curUpdates.rotation : targetL?.rotation ?? 0;
+
+          domEl.style.left = `${posX}%`;
+          domEl.style.top = `${posY}%`;
+          domEl.style.width = `${posW}%`;
+          domEl.style.height = `${posH}%`;
+          domEl.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+        }
+
+        // 2. Synchronize in-memory layer coordinates
+        const updatedLayers = layersRef.current.map((l) =>
+          l.id === layerId ? { ...l, ...curUpdates } : l
+        );
+        layersRef.current = updatedLayers;
+
+        // 3. Fast persistent Three.js texture update without shader recompile
+        if (onLiveUpdateLayers) {
+          onLiveUpdateLayers(updatedLayers);
+        }
+      });
     }
   };
 
@@ -190,26 +213,43 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
-    if (pendingUpdateRef.current) {
-      updateLayer(pendingUpdateRef.current.layerId, pendingUpdateRef.current.updates);
-      pendingUpdateRef.current = null;
+
+    const session = dragSessionRef.current;
+    if (session && session.hasMoved) {
+      // Commit the final position to React state once at the end of the gesture
+      onChangeMockup({ layers: [...layersRef.current] });
     }
+
     dragSessionRef.current = null;
-    setActiveHandle(null);
-    setDragStart(null);
+    pendingUpdatesRef.current = null;
+
     try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch (err) {}
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore if pointer release fails
+    }
   };
 
-  // Fit active design to 100% full 4096px x 4096px UV bounds
+  // Fit active design preserving aspect ratio
   const handleFitDesign = () => {
     if (!activeLayer) return;
+    const aspect = (activeLayer.aspectRatio && activeLayer.aspectRatio > 0)
+      ? activeLayer.aspectRatio
+      : (activeLayer.width / (activeLayer.height || 1)) || 1;
+
+    let fitW = 1.0;
+    let fitH = 1.0;
+    if (aspect >= 1) {
+      fitH = Math.max(0.04, Math.min(1.0, 1.0 / aspect));
+    } else {
+      fitW = Math.max(0.04, Math.min(1.0, 1.0 * aspect));
+    }
+
     updateLayer(activeLayer.id, {
       x: 0.5,
       y: 0.5,
-      width: 1.0,
-      height: 1.0,
+      width: fitW,
+      height: fitH,
       rotation: 0,
     });
   };
@@ -235,21 +275,14 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     });
   };
 
-  // Toggle Visibility
-  const toggleVisibility = (layerId: string) => {
-    const target = mockup.layers.find((l) => l.id === layerId);
-    if (target) {
-      updateLayer(layerId, { visible: !target.visible });
-    }
-  };
-
   return (
     <div className="space-y-3 select-none">
-      {/* 2D Interactive UV Canvas (Matching image.png: rounded-2xl bg-[#262626] with Guide pill) */}
+      {/* 2D Interactive UV Canvas */}
       <div
         ref={containerRef}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         className="w-full aspect-square bg-[#262626] border border-[#333333] rounded-2xl relative overflow-hidden flex items-center justify-center touch-none shadow-inner"
       >
         {/* Floating Guide toggle in top-right corner of canvas */}
@@ -283,7 +316,16 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
           return (
             <div
               key={layer.id}
+              ref={(el) => {
+                if (el) {
+                  layerDomMapRef.current.set(layer.id, el);
+                } else {
+                  layerDomMapRef.current.delete(layer.id);
+                }
+              }}
               onPointerDown={(e) => handlePointerDown(e, 'move', layer.id)}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
               style={{
                 left: `${layer.x * 100}%`,
                 top: `${layer.y * 100}%`,
@@ -303,35 +345,45 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                 className="w-full h-full object-contain pointer-events-none select-none filter drop-shadow-md"
               />
 
-              {/* Active Selection Bounding Box & Transform Handles matching image.png */}
+              {/* Active Selection Bounding Box & Transform Handles */}
               {isActive && (
                 <div className="absolute inset-0 border-2 border-white pointer-events-none">
-                  {/* Corner Resize Handles (Small calc(var(--spacing) * 1.5) size per user request) */}
+                  {/* Corner Resize Handles */}
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'nw', layer.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
                     className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-125 transition-transform"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'ne', layer.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
                     className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-125 transition-transform"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'se', layer.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
                     className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-125 transition-transform"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'sw', layer.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
                     className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-125 transition-transform"
                   />
 
-                  {/* Top rotation stem & handle matching image.png */}
+                  {/* Top rotation stem & handle */}
                   <div className="absolute -top-4.5 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-white pointer-events-none" />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'rotate', layer.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
                     className="absolute -top-6.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border border-black/30 pointer-events-auto cursor-grab active:cursor-grabbing shadow-md hover:scale-125 transition-transform"
                     title="Drag to rotate design"
                   />
@@ -342,7 +394,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         })}
       </div>
 
-      {/* Row 1: Two buttons side by side matching image.png (Color button & Fit Design button) */}
+      {/* Row 1: Color button & Fit Design button */}
       <div className="grid grid-cols-2 gap-2">
         {/* Color Input with Swatch Picker & Direct Hex Typing */}
         <div className="flex items-center">
@@ -363,7 +415,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         </button>
       </div>
 
-      {/* Row 2: Full width Upload Design button matching Fit Design styling */}
+      {/* Row 2: Full width Upload Design button */}
       <div>
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -387,14 +439,14 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         />
       </div>
 
-      {/* Row 3: Section label matching tab style */}
+      {/* Row 3: Section label */}
       <div className="pt-2">
         <span className="text-xs font-semibold tracking-tight text-white">
           LAYERS ({mockup.layers.length})
         </span>
       </div>
 
-      {/* Row 4: Layer list item matching image.png */}
+      {/* Row 4: Layer list item */}
       <div className="space-y-3">
         {mockup.layers.map((layer, index) => {
           const isActive = layer.id === (activeLayer?.id || '');
@@ -424,7 +476,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                   </span>
                 </div>
 
-                {/* Actions: Move Up, Move Down, Delete matching image.png */}
+                {/* Actions: Move Up, Move Down, Delete */}
                 <div
                   className="flex items-center gap-2 text-[#737373]"
                   onClick={(e) => e.stopPropagation()}
@@ -457,10 +509,10 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                 </div>
               </div>
 
-              {/* Row 5: Two sleek horizontal sliders matching image.png */}
+              {/* Row 5: Two sleek horizontal sliders */}
               {isActive && (
                 <div className="space-y-3 px-0.5">
-                  {/* Slider 1: Scale / Size */}
+                  {/* Slider 1: Scale / Size preserving aspect ratio */}
                   <input
                     type="range"
                     min={0.05}
@@ -469,7 +521,9 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                     value={layer.width}
                     onChange={(e) => {
                       const newW = parseFloat(e.target.value);
-                      const aspect = layer.width / (layer.height || 1);
+                      const aspect = (layer.aspectRatio && layer.aspectRatio > 0)
+                        ? layer.aspectRatio
+                        : (layer.width / (layer.height || 1)) || 1;
                       updateLayer(layer.id, { width: newW, height: newW / aspect });
                     }}
                     className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white block"

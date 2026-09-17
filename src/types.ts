@@ -23,6 +23,9 @@ export interface DesignLayer {
   rotation: number; // in degrees
   opacity: number; // 0 to 1
   visible: boolean;
+  aspectRatio?: number; // width / height
+  naturalWidth?: number;
+  naturalHeight?: number;
 }
 
 export interface MockupSettings {

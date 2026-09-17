@@ -21,6 +21,7 @@ import {
   TransformSettings,
   JerseyModel,
   MaterialPreset,
+  DesignLayer,
 } from '../types';
 import { ENVIRONMENT_PRESETS } from '../data/models';
 import { InteractiveUVCanvas } from './InteractiveUVCanvas';
@@ -42,6 +43,7 @@ interface InspectorPanelProps {
   onChangeScene: (updates: Partial<SceneSettings>) => void;
   onChangeTransform: (updates: Partial<TransformSettings>) => void;
   onUploadDesign: (file: File) => void;
+  onLiveUpdateLayers?: (layers: DesignLayer[]) => void;
   onSnapCamera: (preset: 'front' | 'back' | 'left' | 'right' | 'top') => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
@@ -64,6 +66,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   onChangeScene,
   onChangeTransform,
   onUploadDesign,
+  onLiveUpdateLayers,
   onSnapCamera,
   isOpenMobile = false,
   onCloseMobile,
@@ -156,6 +159,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             mockup={mockup}
             onChangeMockup={onChangeMockup}
             onUploadDesign={onUploadDesign}
+            onLiveUpdateLayers={onLiveUpdateLayers}
           />
         )}
 
