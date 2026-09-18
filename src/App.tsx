@@ -239,6 +239,7 @@ export default function App() {
             rotation: 0,
             opacity: 1,
             visible: true,
+            locked: false,
             aspectRatio: aspect,
             naturalWidth: naturalW,
             naturalHeight: naturalH,

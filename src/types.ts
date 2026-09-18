@@ -23,6 +23,7 @@ export interface DesignLayer {
   rotation: number; // in degrees
   opacity: number; // 0 to 1
   visible: boolean;
+  locked?: boolean;
   aspectRatio?: number; // width / height
   naturalWidth?: number;
   naturalHeight?: number;

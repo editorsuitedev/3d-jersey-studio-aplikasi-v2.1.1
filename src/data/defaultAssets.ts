@@ -17,6 +17,7 @@ export const createInitialLayers = (): DesignLayer[] => [
     rotation: 0,
     opacity: 1,
     visible: true,
+    locked: false,
     aspectRatio: 1.0,
     naturalWidth: 150,
     naturalHeight: 150,

@@ -7,9 +7,103 @@ import {
   EyeOff,
   ChevronUp,
   ChevronDown,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { JerseyModel, MockupSettings, DesignLayer } from '../types';
 import { HexColorInput } from './HexColorInput';
+
+interface CompactPillSliderProps {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  isLocked?: boolean;
+  onChange: (value: number) => void;
+}
+
+const CompactPillSlider: React.FC<CompactPillSliderProps> = ({
+  label,
+  value,
+  min,
+  max,
+  step = 0.01,
+  unit = '%',
+  isLocked = false,
+  onChange,
+}) => {
+  const safeRange = max - min || 1;
+  const clampedValue = Math.min(max, Math.max(min, value));
+  const percent = ((clampedValue - min) / safeRange) * 100;
+  const clampedPercent = Math.min(100, Math.max(0, percent));
+  // Keep thumb cleanly within rounded track corners (between 5% and 95%)
+  const thumbPercent = Math.min(94, Math.max(6, clampedPercent));
+
+  return (
+    <div
+      className={`relative h-8 rounded-lg border overflow-hidden flex items-center select-none shadow-xs transition-all duration-150 ${
+        isLocked
+          ? 'bg-[#121212] border-[#222222] opacity-50 cursor-not-allowed'
+          : 'bg-[#141414] border-[#262626] hover:border-[#383838] group cursor-ew-resize'
+      }`}
+    >
+      {/* Active Fill Track Bar (following Roughness slider UI) */}
+      <div
+        className="absolute left-0 top-0 bottom-0 bg-[#262626] group-hover:bg-[#2C2C2C] pointer-events-none will-change-[width] transition-colors duration-150"
+        style={{ width: `${clampedPercent}%` }}
+      />
+
+      {/* Label on the left */}
+      <div className="relative z-10 pl-2.5 flex items-center gap-1 pointer-events-none truncate max-w-[55%]">
+        <span className="text-[11px] font-normal text-[#9ca3af] group-hover:text-[#ECECEC] transition-colors duration-150 truncate">
+          {label}
+        </span>
+        {isLocked && <Lock className="w-2.5 h-2.5 text-[#EAB308] shrink-0" />}
+      </div>
+
+      {/* Numeric Value on the right */}
+      <span className="relative z-10 pr-2.5 ml-auto font-mono text-[10px] text-[#D4D4D4] group-hover:text-white transition-colors duration-150 pointer-events-none shrink-0">
+        {Math.round(clampedValue * 100)}{unit}
+      </span>
+
+      {/* Vertical White Pill Thumb (following Roughness slider UI) */}
+      {!isLocked && (
+        <div
+          className="absolute top-1.5 bottom-1.5 w-1.5 bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.45)] group-hover:shadow-[0_0_10px_rgba(255,255,255,0.75)] group-hover:w-2 group-active:scale-95 pointer-events-none z-10 will-change-[left] transition-all duration-150 ease-out"
+          style={{
+            left: `${thumbPercent}%`,
+            transform: 'translateX(-50%)',
+          }}
+        />
+      )}
+
+      {/* Interactive Range Input Overlay */}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        disabled={isLocked}
+        value={clampedValue}
+        onChange={(e) => {
+          if (isLocked) return;
+          const val = parseFloat(e.target.value);
+          if (!isNaN(val)) onChange(val);
+        }}
+        className={`absolute inset-0 w-full h-full opacity-0 z-20 ${
+          isLocked ? 'cursor-not-allowed' : 'cursor-ew-resize active:cursor-grabbing'
+        }`}
+        title={
+          isLocked
+            ? 'Buka kunci gembok untuk mengubah ukuran'
+            : `${label}: ${Math.round(clampedValue * 100)}${unit}`
+        }
+      />
+    </div>
+  );
+};
 
 interface InteractiveUVCanvasProps {
   currentModel: JerseyModel;
@@ -86,6 +180,9 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
 
     const targetLayer = layersRef.current.find((l) => l.id === layerId);
     if (!targetLayer) return;
+
+    // If layer is locked, prevent moving, resizing, or rotating
+    if (targetLayer.locked) return;
 
     const rect = container.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
@@ -235,7 +332,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
 
   // Fit active design preserving aspect ratio
   const handleFitDesign = () => {
-    if (!activeLayer) return;
+    if (!activeLayer || activeLayer.locked) return;
     const aspect = (activeLayer.aspectRatio && activeLayer.aspectRatio > 0)
       ? activeLayer.aspectRatio
       : (activeLayer.width / (activeLayer.height || 1)) || 1;
@@ -337,59 +434,74 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                 transform: `translate(-50%, -50%) rotate(${layer.rotation}deg)`,
                 opacity: layer.opacity,
               }}
-              className={`absolute cursor-move touch-none flex items-center justify-center ${
-                isActive ? 'z-20' : 'z-10'
-              }`}
+              className={`absolute touch-none flex items-center justify-center ${
+                layer.locked ? 'cursor-default' : 'cursor-move'
+              } ${isActive ? 'z-20' : 'z-10'}`}
             >
               {/* Layer graphic */}
               <img
                 src={layer.dataUrl}
-                alt={layer.name}
+                alt="Design Layer"
                 className="w-full h-full object-contain pointer-events-none select-none filter drop-shadow-md"
               />
 
               {/* Active Selection Bounding Box & Transform Handles */}
               {isActive && (
-                <div className="absolute inset-0 border-2 border-white pointer-events-none">
-                  {/* Corner Resize Handles */}
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'nw', layer.id)}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'ne', layer.id)}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'se', layer.id)}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'sw', layer.id)}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
-                  />
+                <div
+                  className={`absolute inset-0 pointer-events-none ${
+                    layer.locked
+                      ? 'border border-dashed border-[#EAB308]/80'
+                      : 'border-2 border-white'
+                  }`}
+                >
+                  {layer.locked ? (
+                    /* Locked Badge Indicator on UV Canvas */
+                    <div className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-[#EAB308] text-black flex items-center justify-center shadow-md">
+                      <Lock className="w-3 h-3" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Corner Resize Handles */}
+                      <div
+                        onPointerDown={(e) => handlePointerDown(e, 'nw', layer.id)}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
+                        className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
+                      />
+                      <div
+                        onPointerDown={(e) => handlePointerDown(e, 'ne', layer.id)}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
+                        className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
+                      />
+                      <div
+                        onPointerDown={(e) => handlePointerDown(e, 'se', layer.id)}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
+                        className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
+                      />
+                      <div
+                        onPointerDown={(e) => handlePointerDown(e, 'sw', layer.id)}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
+                        className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
+                      />
 
-                  {/* Top rotation stem & handle */}
-                  <div className="absolute -top-4.5 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-white pointer-events-none" />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'rotate', layer.id)}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    className="absolute -top-6.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border border-black/30 pointer-events-auto cursor-grab active:cursor-grabbing shadow-md hover:scale-135 active:scale-110 transition-transform duration-150"
-                    title="Drag to rotate design"
-                  />
+                      {/* Top rotation stem & handle */}
+                      <div className="absolute -top-4.5 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-white pointer-events-none" />
+                      <div
+                        onPointerDown={(e) => handlePointerDown(e, 'rotate', layer.id)}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        className="absolute -top-6.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border border-black/30 pointer-events-auto cursor-grab active:cursor-grabbing shadow-md hover:scale-135 active:scale-110 transition-transform duration-150"
+                        title="Drag to rotate design"
+                      />
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -411,9 +523,19 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         {/* Fit Design Button */}
         <button
           onClick={handleFitDesign}
-          className="py-2.5 px-3 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#262626] hover:border-[#444444] text-[#ECECEC] hover:text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 active:scale-98 cursor-pointer shadow-xs hover:shadow-sm group"
+          disabled={!activeLayer || activeLayer.locked}
+          className={`py-2.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 shadow-xs group ${
+            activeLayer?.locked
+              ? 'bg-[#141414] border-[#222222] text-[#555555] cursor-not-allowed opacity-50'
+              : 'bg-[#141414] hover:bg-[#1E1E1E] border-[#262626] hover:border-[#444444] text-[#ECECEC] hover:text-white active:scale-98 cursor-pointer hover:shadow-sm'
+          }`}
+          title={activeLayer?.locked ? 'Buka kunci gembok untuk mengubah ukuran' : 'Fit Design'}
         >
-          <Maximize2 className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
+          <Maximize2
+            className={`w-3.5 h-3.5 transition-colors duration-150 ${
+              activeLayer?.locked ? 'text-[#555555]' : 'text-[#A3A3A3] group-hover:text-white'
+            }`}
+          />
           <span>Fit Design</span>
         </button>
       </div>
@@ -464,30 +586,34 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  {/* Layer Thumbnail with transparent bg */}
-                  <div className="w-7 h-7 rounded bg-transparent flex items-center justify-center overflow-hidden shrink-0 border border-[#333333]">
+                  {/* Layer Thumbnail Preview only (no file name text) */}
+                  <div
+                    className={`w-9 h-9 rounded-md bg-[#1c1c1c] flex items-center justify-center overflow-hidden shrink-0 border transition-all duration-150 relative ${
+                      isActive ? 'border-white/40 shadow-xs' : 'border-[#333333]'
+                    } ${!layer.visible ? 'opacity-30' : ''}`}
+                  >
                     <img
                       src={layer.dataUrl}
-                      alt={layer.name}
-                      className="w-full h-full object-contain"
+                      alt="Design preview"
+                      className="w-full h-full object-contain p-0.5"
                     />
+                    {layer.locked && (
+                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-tl bg-[#EAB308] text-black flex items-center justify-center shadow-xs">
+                        <Lock className="w-2 h-2 stroke-[2.5]" />
+                      </div>
+                    )}
                   </div>
-
-                  {/* Layer Name */}
-                  <span className="text-xs font-medium text-white truncate">
-                    {layer.name}
-                  </span>
                 </div>
 
-                {/* Actions: Move Up, Move Down, Delete */}
+                {/* Actions: Move Up, Move Down, Hide/Unhide, Lock/Unlock, Delete */}
                 <div
-                  className="flex items-center gap-1.5 text-[#737373]"
+                  className="flex items-center gap-1 text-[#737373]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     disabled={index === 0}
                     onClick={() => moveLayer(index, 'up')}
-                    className="hover:text-white hover:bg-[#262626] rounded p-1 disabled:opacity-20 transition-all duration-150 cursor-pointer active:scale-90"
+                    className="hover:text-white hover:bg-[#262626] rounded p-1.5 disabled:opacity-20 transition-all duration-150 cursor-pointer active:scale-90"
                     title="Move up"
                   >
                     <ChevronUp className="w-4 h-4" />
@@ -496,68 +622,87 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                   <button
                     disabled={index === mockup.layers.length - 1}
                     onClick={() => moveLayer(index, 'down')}
-                    className="hover:text-white hover:bg-[#262626] rounded p-1 disabled:opacity-20 transition-all duration-150 cursor-pointer active:scale-90"
+                    className="hover:text-white hover:bg-[#262626] rounded p-1.5 disabled:opacity-20 transition-all duration-150 cursor-pointer active:scale-90"
                     title="Move down"
                   >
                     <ChevronDown className="w-4 h-4" />
                   </button>
 
+                  {/* Hide / Unhide Button (disamping kiri icon gembok & delete) */}
+                  <button
+                    onClick={() => updateLayer(layer.id, { visible: !layer.visible })}
+                    className={`rounded p-1.5 transition-all duration-150 cursor-pointer active:scale-90 ${
+                      layer.visible
+                        ? 'text-[#A3A3A3] hover:text-white hover:bg-[#262626]'
+                        : 'text-[#666666] hover:text-[#A3A3A3] bg-[#222222]/80'
+                    }`}
+                    title={layer.visible ? 'Sembunyikan design (Hide)' : 'Tampilkan design (Unhide)'}
+                  >
+                    {layer.visible ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  {/* Lock / Unlock Button (disamping kiri icon delete) */}
+                  <button
+                    onClick={() => updateLayer(layer.id, { locked: !layer.locked })}
+                    className={`rounded p-1.5 transition-all duration-150 cursor-pointer active:scale-90 ${
+                      layer.locked
+                        ? 'text-[#EAB308] bg-[#EAB308]/15 hover:bg-[#EAB308]/25 shadow-xs'
+                        : 'text-[#A3A3A3] hover:text-white hover:bg-[#262626]'
+                    }`}
+                    title={
+                      layer.locked
+                        ? 'Design terkunci (klik untuk membuka agar bisa digeser)'
+                        : 'Kunci design (klik agar tidak dapat bergeser lagi)'
+                    }
+                  >
+                    {layer.locked ? (
+                      <Lock className="w-4 h-4" />
+                    ) : (
+                      <Unlock className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  {/* Delete Button */}
                   <button
                     onClick={() => handleDeleteLayer(layer.id)}
-                    className="hover:text-[#EF4444] hover:bg-[#2A1515] rounded p-1 transition-all duration-150 cursor-pointer active:scale-90"
-                    title="Delete layer"
+                    className="hover:text-[#EF4444] hover:bg-[#2A1515] rounded p-1.5 transition-all duration-150 cursor-pointer active:scale-90 text-[#737373]"
+                    title="Hapus layer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Row 5: Two sleek horizontal sliders */}
+              {/* Row 5: Scale & Opacity dibagi dua, ikuti UI Roughness & compact */}
               {isActive && (
-                <div className="space-y-2.5 px-0.5 pt-1 animate-accordion-reveal">
-                  {/* Slider 1: Scale / Size preserving aspect ratio */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-[10px] text-[#888888]">
-                      <span>Scale</span>
-                      <span className="font-mono">{Math.round(layer.width * 100)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.05}
-                      max={1.0}
-                      step={0.01}
-                      value={layer.width}
-                      onChange={(e) => {
-                        const newW = parseFloat(e.target.value);
-                        const aspect = (layer.aspectRatio && layer.aspectRatio > 0)
-                          ? layer.aspectRatio
-                          : (layer.width / (layer.height || 1)) || 1;
-                        updateLayer(layer.id, { width: newW, height: newW / aspect });
-                      }}
-                      className="w-full h-1 bg-[#262626] hover:bg-[#303030] rounded appearance-none cursor-ew-resize active:cursor-grabbing accent-white block transition-colors duration-150"
-                      title="Scale"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-2 pt-1 animate-accordion-reveal">
+                  <CompactPillSlider
+                    label="Scale"
+                    value={layer.width}
+                    min={0.05}
+                    max={1.0}
+                    step={0.01}
+                    isLocked={layer.locked}
+                    onChange={(newW) => {
+                      const aspect = (layer.aspectRatio && layer.aspectRatio > 0)
+                        ? layer.aspectRatio
+                        : (layer.width / (layer.height || 1)) || 1;
+                      updateLayer(layer.id, { width: newW, height: newW / aspect });
+                    }}
+                  />
 
-                  {/* Slider 2: Opacity */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-[10px] text-[#888888]">
-                      <span>Opacity</span>
-                      <span className="font-mono">{Math.round((layer.opacity ?? 1) * 100)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={layer.opacity ?? 1}
-                      onChange={(e) =>
-                        updateLayer(layer.id, { opacity: parseFloat(e.target.value) })
-                      }
-                      className="w-full h-1 bg-[#262626] hover:bg-[#303030] rounded appearance-none cursor-ew-resize active:cursor-grabbing accent-white block transition-colors duration-150"
-                      title="Opacity"
-                    />
-                  </div>
+                  <CompactPillSlider
+                    label="Opacity"
+                    value={layer.opacity ?? 1}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(newOp) => updateLayer(layer.id, { opacity: newOp })}
+                  />
                 </div>
               )}
             </div>
