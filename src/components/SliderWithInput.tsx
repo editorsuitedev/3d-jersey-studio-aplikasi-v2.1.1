@@ -80,15 +80,15 @@ export const SliderWithInput: React.FC<SliderWithInputProps> = ({
   return (
     <div className={`flex items-center gap-2.5 w-full select-none ${className}`}>
       {/* Slider Pill Container */}
-      <div className="relative flex-1 h-10 rounded-lg bg-[#141414] border border-[#262626] overflow-hidden flex items-center group shadow-xs">
+      <div className="relative flex-1 h-10 rounded-lg bg-[#141414] border border-[#262626] hover:border-[#383838] overflow-hidden flex items-center group shadow-xs transition-all duration-150 cursor-ew-resize">
         {/* Active Fill Track Bar */}
         <div
-          className="absolute left-0 top-0 bottom-0 bg-[#262626] pointer-events-none will-change-[width]"
+          className="absolute left-0 top-0 bottom-0 bg-[#262626] group-hover:bg-[#2C2C2C] pointer-events-none will-change-[width] transition-colors duration-150"
           style={{ width: `${clampedPercent}%` }}
         />
 
         {/* Subtle Tick Marks */}
-        <div className="absolute inset-0 flex justify-between items-center px-10 sm:px-12 pointer-events-none opacity-20">
+        <div className="absolute inset-0 flex justify-between items-center px-10 sm:px-12 pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity duration-150">
           <div className="w-[1px] h-3 bg-white" />
           <div className="w-[1px] h-3 bg-white" />
           <div className="w-[1px] h-3 bg-white" />
@@ -96,13 +96,13 @@ export const SliderWithInput: React.FC<SliderWithInputProps> = ({
         </div>
 
         {/* Label text inside track on the left */}
-        <span className="relative z-10 pl-3.5 text-xs font-normal text-[#9ca3af] pointer-events-none truncate max-w-[55%]">
+        <span className="relative z-10 pl-3.5 text-xs font-normal text-[#9ca3af] group-hover:text-[#ECECEC] transition-colors duration-150 pointer-events-none truncate max-w-[55%]">
           {label}
         </span>
 
         {/* Vertical White Pill Thumb */}
         <div
-          className="absolute top-1.5 bottom-1.5 w-1.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.45)] pointer-events-none z-10 will-change-[left]"
+          className="absolute top-1.5 bottom-1.5 w-1.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.45)] group-hover:shadow-[0_0_12px_rgba(255,255,255,0.75)] group-hover:w-2 group-active:scale-90 pointer-events-none z-10 will-change-[left] transition-all duration-150 ease-out"
           style={{
             left: `${thumbPercent}%`,
             transform: 'translateX(-50%)',
@@ -124,13 +124,13 @@ export const SliderWithInput: React.FC<SliderWithInputProps> = ({
             const val = parseFloat((e.target as HTMLInputElement).value);
             if (!isNaN(val)) onChange(val);
           }}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize active:cursor-grabbing z-20"
           title={`${label}: ${formatValue(clampedValue)}${unit}`}
         />
       </div>
 
       {/* Numeric Value Input Box */}
-      <div className="w-16 h-10 rounded-lg bg-[#141414] border border-[#262626] flex items-center justify-center shrink-0 focus-within:border-white/50 focus-within:ring-1 focus-within:ring-white/20 transition-colors shadow-xs">
+      <div className="w-16 h-10 rounded-lg bg-[#141414] border border-[#262626] hover:border-[#383838] flex items-center justify-center shrink-0 focus-within:border-white/70 focus-within:ring-1 focus-within:ring-white/20 transition-all duration-150 shadow-xs cursor-text">
         <input
           type="text"
           inputMode="decimal"
@@ -143,7 +143,7 @@ export const SliderWithInput: React.FC<SliderWithInputProps> = ({
               (e.target as HTMLInputElement).blur();
             }
           }}
-          className="w-full h-full bg-transparent text-center font-mono text-xs text-white font-medium focus:outline-none px-1"
+          className="w-full h-full bg-transparent text-center font-mono text-xs text-white font-medium focus:outline-none px-1 cursor-text"
           title={`Input custom ${label}`}
         />
       </div>

@@ -26,7 +26,12 @@
   }
 }
 
-/* Slider custom styles */
+/* Slider custom styles with smooth transition & responsive hover/active */
+input[type="range"] {
+  cursor: ew-resize;
+  transition: background-color 0.15s ease;
+}
+
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -34,9 +39,21 @@ input[type="range"]::-webkit-slider-thumb {
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  cursor: pointer;
+  cursor: ew-resize;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
   border: 1px solid #595959;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  cursor: ew-resize;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(0.95);
+  cursor: grabbing;
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -44,9 +61,37 @@ input[type="range"]::-moz-range-thumb {
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  cursor: pointer;
+  cursor: ew-resize;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
   border: 1px solid #595959;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+input[type="range"]:hover::-moz-range-thumb {
+  transform: scale(1.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  cursor: ew-resize;
+}
+
+input[type="range"]:active::-moz-range-thumb {
+  transform: scale(0.95);
+  cursor: grabbing;
+}
+
+/* Smooth Accordion Content Reveal */
+@keyframes accordionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-accordion-reveal {
+  animation: accordionReveal 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* User-requested accordion styling */

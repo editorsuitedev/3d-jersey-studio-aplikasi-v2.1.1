@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ChevronDown,
-  ChevronUp,
   RotateCcw,
   Sun,
   Camera,
@@ -115,25 +114,25 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div className="flex items-center gap-6 h-full">
           <button
             onClick={() => setActiveTab('DESIGN')}
-            className={`h-full text-xs font-semibold tracking-tight transition-colors relative flex items-center ${
+            className={`h-full text-xs font-semibold tracking-tight transition-all duration-150 relative flex items-center cursor-pointer select-none ${
               activeTab === 'DESIGN' ? 'text-white' : 'text-[#737373] hover:text-[#ECECEC]'
             }`}
           >
             <span>DESIGN</span>
             {activeTab === 'DESIGN' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white transition-all duration-200" />
             )}
           </button>
 
           <button
             onClick={() => setActiveTab('EFFECTS')}
-            className={`h-full text-xs font-semibold tracking-tight transition-colors relative flex items-center ${
+            className={`h-full text-xs font-semibold tracking-tight transition-all duration-150 relative flex items-center cursor-pointer select-none ${
               activeTab === 'EFFECTS' ? 'text-white' : 'text-[#737373] hover:text-[#ECECEC]'
             }`}
           >
             <span>SET UP</span>
             {activeTab === 'EFFECTS' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white transition-all duration-200" />
             )}
           </button>
         </div>
@@ -142,7 +141,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         {onCloseMobile && (
           <button
             onClick={onCloseMobile}
-            className="md:hidden w-7 h-7 rounded flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
+            className="md:hidden w-7 h-7 rounded-md flex items-center justify-center text-[#737373] hover:text-white hover:bg-[#222222] active:scale-90 transition-all duration-150 cursor-pointer"
             title="Close Panel"
           >
             <X className="w-4 h-4" />
@@ -170,21 +169,21 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             <div className="bg-[#121212] border-0 border-b border-[#262626] rounded-none overflow-hidden">
               <button
                 onClick={() => toggleSection('material')}
-                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] transition-colors cursor-pointer"
+                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] active:bg-[#1C1C1C] transition-all duration-150 cursor-pointer group select-none"
               >
                 <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#A3A3A3]" />
-                  <span className="text-[#ECECEC]">Material</span>
+                  <Sparkles className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
+                  <span className="text-[#ECECEC] group-hover:text-white transition-colors duration-150">Material</span>
                 </div>
-                {activeAccordion === 'material' ? (
-                  <ChevronUp className="w-4 h-4 text-[#737373]" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-[#737373]" />
-                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ease-out transform ${
+                    activeAccordion === 'material' ? 'rotate-180 text-white' : 'rotate-0 text-[#737373] group-hover:text-[#CCCCCC]'
+                  }`}
+                />
               </button>
 
               {activeAccordion === 'material' && (
-                <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
+                <div className="p-4 border-t border-[#262626] space-y-4 text-xs animate-accordion-reveal">
                   {/* Roughness Slider with numeric custom input */}
                   <SliderWithInput
                     label="Roughness"
@@ -216,31 +215,31 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             <div className="bg-[#121212] border-0 border-b border-[#262626] rounded-none overflow-hidden">
               <button
                 onClick={() => toggleSection('background')}
-                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] transition-colors cursor-pointer"
+                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] active:bg-[#1C1C1C] transition-all duration-150 cursor-pointer group select-none"
               >
                 <div className="flex items-center gap-2.5">
-                  <FileImage className="w-3.5 h-3.5 text-[#A3A3A3]" />
-                  <span className="text-[#ECECEC]">Background</span>
+                  <FileImage className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
+                  <span className="text-[#ECECEC] group-hover:text-white transition-colors duration-150">Background</span>
                 </div>
-                {activeAccordion === 'background' ? (
-                  <ChevronUp className="w-4 h-4 text-[#737373]" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-[#737373]" />
-                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ease-out transform ${
+                    activeAccordion === 'background' ? 'rotate-180 text-white' : 'rotate-0 text-[#737373] group-hover:text-[#CCCCCC]'
+                  }`}
+                />
               </button>
 
               {activeAccordion === 'background' && (
-                <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
+                <div className="p-4 border-t border-[#262626] space-y-4 text-xs animate-accordion-reveal">
                   {/* Background Type: Solid, Gradient, Image */}
                   <div className="grid grid-cols-3 gap-1">
                     {(['solid', 'gradient', 'image'] as const).map((type) => (
                       <button
                         key={type}
                         onClick={() => onChangeBackground({ type })}
-                        className={`py-1.5 rounded text-[11px] border capitalize transition-all ${
+                        className={`py-1.5 rounded-md text-[11px] border capitalize cursor-pointer select-none transition-all duration-150 ease-out active:scale-95 ${
                           background.type === type
-                            ? 'bg-[#262626] text-white border-white font-medium'
-                            : 'bg-[#141414] text-[#737373] border-[#2A2A2A] hover:text-white'
+                            ? 'bg-[#262626] text-white border-white font-medium shadow-xs ring-1 ring-white/10'
+                            : 'bg-[#141414] text-[#737373] border-[#2A2A2A] hover:text-white hover:border-[#404040] hover:bg-[#1A1A1A]'
                         }`}
                       >
                         {type}
@@ -250,7 +249,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
                   {/* Mode 1: Solid Color with Hex Input */}
                   {background.type === 'solid' && (
-                    <div className="flex items-center justify-between p-2 rounded bg-[#121212] border border-[#262626]">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-[#121212] border border-[#262626] hover:border-[#383838] transition-colors duration-150">
                       <span className="text-[#A3A3A3] text-[11px]">Solid Color</span>
                       <HexColorInput
                         value={background.color}
@@ -263,7 +262,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   {/* Mode 2: Custom Gradient (Color 1 & Color 2 & Angle) with Hex Input */}
                   {background.type === 'gradient' && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2 rounded bg-[#121212] border border-[#262626]">
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-[#121212] border border-[#262626] hover:border-[#383838] transition-colors duration-150">
                         <span className="text-[#A3A3A3] text-[11px]">Color 1 (Start)</span>
                         <HexColorInput
                           value={background.color}
@@ -272,7 +271,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                         />
                       </div>
 
-                      <div className="flex items-center justify-between p-2 rounded bg-[#121212] border border-[#262626]">
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-[#121212] border border-[#262626] hover:border-[#383838] transition-colors duration-150">
                         <span className="text-[#A3A3A3] text-[11px]">Color 2 (End)</span>
                         <HexColorInput
                           value={background.color2 || '#181818'}
@@ -310,13 +309,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                           <div className="flex gap-2">
                             <button
                               onClick={() => bgImageInputRef.current?.click()}
-                              className="flex-1 py-1.5 rounded bg-[#1C1C1C] border border-[#333333] hover:border-white text-white text-[11px] font-medium transition-all"
+                              className="flex-1 py-1.5 rounded-lg bg-[#1C1C1C] border border-[#333333] hover:border-white text-white text-[11px] font-medium transition-all duration-150 active:scale-95 cursor-pointer"
                             >
                               Change Image
                             </button>
                             <button
                               onClick={() => onChangeBackground({ imageUrl: null, type: 'solid' })}
-                              className="px-3 py-1.5 rounded bg-[#2D1515] border border-[#7F1D1D] text-[#FCA5A5] text-[11px] font-medium hover:bg-[#3E1A1A] transition-all"
+                              className="px-3 py-1.5 rounded-lg bg-[#2D1515] border border-[#7F1D1D] text-[#FCA5A5] text-[11px] font-medium hover:bg-[#3E1A1A] hover:border-[#991B1B] transition-all duration-150 active:scale-95 cursor-pointer"
                             >
                               Remove
                             </button>
@@ -325,9 +324,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       ) : (
                         <button
                           onClick={() => bgImageInputRef.current?.click()}
-                          className="w-full py-4 border-2 border-dashed border-[#333333] hover:border-[#666666] rounded-lg text-center transition-all bg-[#141414] hover:bg-[#1A1A1A]"
+                          className="w-full py-4 border-2 border-dashed border-[#333333] hover:border-[#666666] rounded-lg text-center transition-all duration-150 bg-[#141414] hover:bg-[#1A1A1A] active:scale-[0.99] cursor-pointer group"
                         >
-                          <FileImage className="w-5 h-5 text-[#888888] mx-auto mb-1.5" />
+                          <FileImage className="w-5 h-5 text-[#888888] group-hover:text-white group-hover:scale-110 transition-all duration-150 mx-auto mb-1.5" />
                           <span className="text-xs text-white font-medium block">
                             Upload Background Image
                           </span>
@@ -359,21 +358,21 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             <div className="bg-[#121212] border-0 border-b border-[#262626] rounded-none overflow-hidden">
               <button
                 onClick={() => toggleSection('lighting')}
-                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] transition-colors cursor-pointer"
+                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] active:bg-[#1C1C1C] transition-all duration-150 cursor-pointer group select-none"
               >
                 <div className="flex items-center gap-2.5">
-                  <Sun className="w-3.5 h-3.5 text-[#A3A3A3]" />
-                  <span className="text-[#ECECEC]">Lighting</span>
+                  <Sun className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
+                  <span className="text-[#ECECEC] group-hover:text-white transition-colors duration-150">Lighting</span>
                 </div>
-                {activeAccordion === 'lighting' ? (
-                  <ChevronUp className="w-4 h-4 text-[#737373]" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-[#737373]" />
-                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ease-out transform ${
+                    activeAccordion === 'lighting' ? 'rotate-180 text-white' : 'rotate-0 text-[#737373] group-hover:text-[#CCCCCC]'
+                  }`}
+                />
               </button>
 
               {activeAccordion === 'lighting' && (
-                <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
+                <div className="p-4 border-t border-[#262626] space-y-4 text-xs animate-accordion-reveal">
                   {/* Presets Grid */}
                   <div>
                     <label className="text-[#A3A3A3] block mb-1.5 font-medium text-[11px]">
@@ -388,10 +387,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                               environmentPreset: preset.id,
                             })
                           }
-                          className={`py-1.5 px-2 rounded text-[11px] border font-medium truncate text-left transition-all ${
+                          className={`py-2 px-2.5 rounded-md text-[11px] border font-medium truncate text-left cursor-pointer select-none transition-all duration-150 ease-out active:scale-95 ${
                             lighting.environmentPreset === preset.id
-                              ? 'bg-[#262626] text-white border-white'
-                              : 'bg-[#141414] text-[#737373] border-[#2A2A2A] hover:text-white'
+                              ? 'bg-[#262626] text-white border-white shadow-xs ring-1 ring-white/10'
+                              : 'bg-[#141414] text-[#737373] border-[#2A2A2A] hover:text-white hover:border-[#444444] hover:bg-[#1A1A1A] hover:translate-x-0.5'
                           }`}
                         >
                           {preset.name}
@@ -430,30 +429,30 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             <div className="bg-[#121212] border-0 border-b border-[#262626] rounded-none overflow-hidden">
               <button
                 onClick={() => toggleSection('scene')}
-                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] transition-colors cursor-pointer"
+                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] active:bg-[#1C1C1C] transition-all duration-150 cursor-pointer group select-none"
               >
                 <div className="flex items-center gap-2.5">
-                  <Sliders className="w-3.5 h-3.5 text-[#A3A3A3]" />
-                  <span className="text-[#ECECEC]">Shadow</span>
+                  <Sliders className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
+                  <span className="text-[#ECECEC] group-hover:text-white transition-colors duration-150">Shadow</span>
                 </div>
-                {activeAccordion === 'scene' ? (
-                  <ChevronUp className="w-4 h-4 text-[#737373]" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-[#737373]" />
-                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ease-out transform ${
+                    activeAccordion === 'scene' ? 'rotate-180 text-white' : 'rotate-0 text-[#737373] group-hover:text-[#CCCCCC]'
+                  }`}
+                />
               </button>
 
               {activeAccordion === 'scene' && (
-                <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
+                <div className="p-4 border-t border-[#262626] space-y-4 text-xs animate-accordion-reveal">
                   <div className="grid grid-cols-3 gap-1">
                     {(['none', 'soft', 'contact'] as const).map((sh) => (
                       <button
                         key={sh}
                         onClick={() => onChangeScene({ floorShadow: sh })}
-                        className={`py-1.5 rounded text-[11px] border capitalize transition-all ${
+                        className={`py-1.5 rounded-md text-[11px] border capitalize cursor-pointer select-none transition-all duration-150 ease-out active:scale-95 ${
                           scene.floorShadow === sh
-                            ? 'bg-[#262626] text-white border-white font-medium'
-                            : 'bg-[#141414] text-[#737373] border-[#2A2A2A] hover:text-white'
+                            ? 'bg-[#262626] text-white border-white font-medium shadow-xs ring-1 ring-white/10'
+                            : 'bg-[#141414] text-[#737373] border-[#2A2A2A] hover:text-white hover:border-[#404040] hover:bg-[#1A1A1A]'
                         }`}
                       >
                         {sh}
@@ -480,21 +479,21 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             <div className="bg-[#121212] border-0 border-b border-[#262626] rounded-none overflow-hidden">
               <button
                 onClick={() => toggleSection('rotation')}
-                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] transition-colors cursor-pointer"
+                className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-[#181818] active:bg-[#1C1C1C] transition-all duration-150 cursor-pointer group select-none"
               >
                 <div className="flex items-center gap-2.5">
-                  <RotateCcw className="w-3.5 h-3.5 text-[#A3A3A3]" />
-                  <span className="text-[#ECECEC]">Position</span>
+                  <RotateCcw className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
+                  <span className="text-[#ECECEC] group-hover:text-white transition-colors duration-150">Position</span>
                 </div>
-                {activeAccordion === 'rotation' ? (
-                  <ChevronUp className="w-4 h-4 text-[#737373]" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-[#737373]" />
-                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ease-out transform ${
+                    activeAccordion === 'rotation' ? 'rotate-180 text-white' : 'rotate-0 text-[#737373] group-hover:text-[#CCCCCC]'
+                  }`}
+                />
               </button>
 
               {activeAccordion === 'rotation' && (
-                <div className="p-4 border-t border-[#262626] space-y-4 text-xs">
+                <div className="p-4 border-t border-[#262626] space-y-4 text-xs animate-accordion-reveal">
                   {/* Rotation Y with numeric input */}
                   <SliderWithInput
                     label="Rotation Y"
@@ -519,9 +518,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                         positionZ: 0,
                       })
                     }
-                    className="w-full py-1.5 rounded bg-[#161616] border border-[#2E2E2E] hover:border-white text-[11px] text-[#A3A3A3] hover:text-white transition-colors"
+                    className="w-full py-2 rounded-lg bg-[#161616] border border-[#2E2E2E] hover:border-white/70 hover:bg-[#202020] text-[11px] text-[#A3A3A3] hover:text-white font-medium cursor-pointer active:scale-98 transition-all duration-150 shadow-xs group flex items-center justify-center gap-1.5"
                   >
-                    Reset Transforms
+                    <RotateCcw className="w-3 h-3 text-[#737373] group-hover:text-white group-hover:-rotate-45 transition-all duration-200" />
+                    <span>Reset Transforms</span>
                   </button>
                 </div>
               )}

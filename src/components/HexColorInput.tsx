@@ -84,13 +84,13 @@ export const HexColorInput: React.FC<HexColorInputProps> = ({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-2 py-1 rounded bg-[#141414] border border-[#262626] hover:border-[#444444] transition-colors focus-within:border-white/70 ${className}`}
+      className={`inline-flex items-center gap-2 px-2 py-1 rounded bg-[#141414] border border-[#262626] hover:border-[#444444] transition-all duration-150 focus-within:border-white/70 ${className}`}
     >
       {/* Clickable Swatch with direct native touch interaction */}
       <label
         className={`${
           isSmall ? 'w-5 h-5' : 'w-6 h-6'
-        } rounded-xs border border-[#555555] shadow-xs shrink-0 cursor-pointer relative hover:scale-105 active:scale-95 transition-transform flex items-center justify-center overflow-hidden`}
+        } rounded-xs border border-[#555555] hover:border-white/80 shadow-xs shrink-0 cursor-pointer relative hover:scale-110 active:scale-95 transition-all duration-150 flex items-center justify-center overflow-hidden`}
         style={{ backgroundColor: safePickerValue }}
         title="Open color picker"
       >
@@ -105,7 +105,7 @@ export const HexColorInput: React.FC<HexColorInputProps> = ({
       </label>
 
       {/* Hex Text Input */}
-      <div className="flex items-center">
+      <div className="flex items-center cursor-text">
         {showHash && (
           <span className="text-[11px] font-mono text-[#737373] select-none mr-0.5">#</span>
         )}
@@ -123,7 +123,7 @@ export const HexColorInput: React.FC<HexColorInputProps> = ({
           onKeyDown={handleKeyDown}
           maxLength={showHash ? 7 : 6}
           placeholder="2B2B2B"
-          className="w-16 bg-transparent text-white font-mono text-[11px] uppercase tracking-wider outline-none p-0"
+          className="w-16 bg-transparent text-white font-mono text-[11px] uppercase tracking-wider outline-none p-0 cursor-text"
           spellCheck={false}
         />
       </div>

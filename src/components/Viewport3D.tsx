@@ -17,6 +17,11 @@ import { JerseyTextureGenerator } from '../utils/textureGenerator';
 import { ViewportGizmo } from './ViewportGizmo';
 import { ENVIRONMENT_PRESETS } from '../data/models';
 import { Loader2 } from 'lucide-react';
+import {
+  renderHighResImage,
+  renderTurntableVideo,
+  exportCustomizedGLB,
+} from '../utils/gpuExportEngine';
 
 export interface Viewport3DHandle {
   captureScreenshot: (
@@ -33,6 +38,7 @@ export interface Viewport3DHandle {
     transparent: boolean,
     onProgress: (p: number) => void
   ) => Promise<Blob>;
+  exportGLB: () => Promise<Blob>;
   snapCamera: (view: 'front' | 'back' | 'left' | 'right' | 'top') => void;
   updateLayersLive: (layers: DesignLayer[]) => void;
 }
@@ -86,6 +92,8 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
     const activeMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
     const textureGeneratorRef = useRef<JerseyTextureGenerator | null>(null);
     const textureRafRef = useRef<number | null>(null);
+    const liveHqTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastMockupUpdateTimeRef = useRef<number>(0);
 
     // Lights
     const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
@@ -453,6 +461,11 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
       const gen = textureGeneratorRef.current;
       if (!gen) return;
 
+      if (liveHqTimeoutRef.current !== null) {
+        clearTimeout(liveHqTimeoutRef.current);
+        liveHqTimeoutRef.current = null;
+      }
+
       if (mockup.customTextureUrl) {
         await gen.setCustomFullTexture(mockup.customTextureUrl);
       } else {
@@ -464,20 +477,73 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         await gen.prepareLayers(mockup.layers);
       }
 
-      // Render to texture canvas
-      gen.render(mockup);
+      const now = performance.now();
+      const timeSinceLast = now - lastMockupUpdateTimeRef.current;
+      lastMockupUpdateTimeRef.current = now;
+
+      // If updates arrive rapidly (<80ms e.g. from sliders or typing),
+      // render draft texture first for 60+ FPS responsiveness, then schedule HQ bake
+      if (timeSinceLast < 80) {
+        const draftTex = gen.renderDraft(mockup);
+        activeMaterialsRef.current.forEach((mat) => {
+          if (mat.map !== draftTex) {
+            mat.map = draftTex;
+          }
+          mat.color.set('#ffffff');
+          mat.roughness = mockup.roughness;
+          mat.metalness = mockup.metalness;
+        });
+
+        if (
+          !animationRef.current.isPlaying &&
+          rendererRef.current &&
+          sceneRef.current &&
+          cameraRef.current
+        ) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+
+        liveHqTimeoutRef.current = setTimeout(() => {
+          liveHqTimeoutRef.current = null;
+          if (!textureGeneratorRef.current) return;
+          const hqTex = textureGeneratorRef.current.render(mockupRef.current);
+          activeMaterialsRef.current.forEach((mat) => {
+            mat.map = hqTex;
+          });
+          if (
+            !animationRef.current.isPlaying &&
+            rendererRef.current &&
+            sceneRef.current &&
+            cameraRef.current
+          ) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+        }, 120);
+        return;
+      }
+
+      // Render to high-resolution texture canvas (4096px Ultra-HD)
+      const hqTex = gen.render(mockup);
 
       // Re-apply to all active mesh materials (ensuring 100% mesh coverage without shader recompile)
-      const tex = gen.getTexture();
       activeMaterialsRef.current.forEach((mat) => {
-        if (mat.map !== tex) {
-          mat.map = tex;
+        if (mat.map !== hqTex) {
+          mat.map = hqTex;
           mat.needsUpdate = true;
         }
         mat.color.set('#ffffff');
         mat.roughness = mockup.roughness;
         mat.metalness = mockup.metalness;
       });
+
+      if (
+        !animationRef.current.isPlaying &&
+        rendererRef.current &&
+        sceneRef.current &&
+        cameraRef.current
+      ) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
     };
 
     useEffect(() => {
@@ -493,6 +559,10 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         if (textureRafRef.current !== null) {
           cancelAnimationFrame(textureRafRef.current);
           textureRafRef.current = null;
+        }
+        if (liveHqTimeoutRef.current !== null) {
+          clearTimeout(liveHqTimeoutRef.current);
+          liveHqTimeoutRef.current = null;
         }
       };
     }, [
@@ -742,19 +812,23 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         const gen = textureGeneratorRef.current;
         if (!gen) return;
 
-        // Render directly to persistent canvas texture without re-allocation
-        gen.render({ ...mockupRef.current, layers: liveLayers });
+        // Cancel any pending HQ bake timeout
+        if (liveHqTimeoutRef.current !== null) {
+          clearTimeout(liveHqTimeoutRef.current);
+          liveHqTimeoutRef.current = null;
+        }
 
-        // Ensure materials map points to texture without re-linking shaders
-        const tex = gen.getTexture();
+        // 1. Ultra-fast lightweight draft texture render (1024px, zero mipmaps, sub-millisecond)
+        const draftTex = gen.renderDraft({ ...mockupRef.current, layers: liveLayers });
+
+        // Instant material map swap without shader recompilation
         activeMaterialsRef.current.forEach((mat) => {
-          if (mat.map !== tex) {
-            mat.map = tex;
-            mat.needsUpdate = true;
+          if (mat.map !== draftTex) {
+            mat.map = draftTex;
           }
         });
 
-        // Trigger immediate render frame if turntable animation is not currently running
+        // Trigger immediate single frame render if turntable animation is not currently running
         if (
           !animationRef.current.isPlaying &&
           rendererRef.current &&
@@ -763,6 +837,24 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         ) {
           rendererRef.current.render(sceneRef.current, cameraRef.current);
         }
+
+        // 2. Debounced High-Res Bake: If user pauses dragging for 120ms, automatically upgrade to crystal-clear 4096px HQ texture
+        liveHqTimeoutRef.current = setTimeout(() => {
+          liveHqTimeoutRef.current = null;
+          if (!textureGeneratorRef.current) return;
+          const hqTex = textureGeneratorRef.current.render({ ...mockupRef.current, layers: liveLayers });
+          activeMaterialsRef.current.forEach((mat) => {
+            mat.map = hqTex;
+          });
+          if (
+            !animationRef.current.isPlaying &&
+            rendererRef.current &&
+            sceneRef.current &&
+            cameraRef.current
+          ) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+        }, 120);
       },
 
       captureScreenshot: async (
@@ -771,306 +863,95 @@ export const Viewport3D = forwardRef<Viewport3DHandle, Viewport3DProps>(
         ratio: '16:9' | '1:1' | '9:16' | '4:5' = '1:1',
         transparent: boolean = false
       ): Promise<string> => {
-        const renderer = rendererRef.current;
-        const scene = sceneRef.current;
-        const camera = cameraRef.current;
-        if (!renderer || !scene || !camera) {
-          throw new Error('Renderer not initialized');
+        const model = modelGroupRef.current;
+        if (!model) {
+          throw new Error('Model not loaded yet');
         }
 
-        // Preload custom background image if applicable
-        let bgImg: HTMLImageElement | null = null;
-        if (!transparent && background.type === 'image' && background.imageUrl) {
-          bgImg = new Image();
-          bgImg.crossOrigin = 'anonymous';
-          bgImg.src = background.imageUrl;
-          await new Promise((resolve) => {
-            if (!bgImg) return resolve(null);
-            if (bgImg.complete) return resolve(null);
-            bgImg.onload = () => resolve(null);
-            bgImg.onerror = () => resolve(null);
+        // Ensure 4096px HQ texture is baked before capturing
+        if (liveHqTimeoutRef.current !== null) {
+          clearTimeout(liveHqTimeoutRef.current);
+          liveHqTimeoutRef.current = null;
+        }
+        if (textureGeneratorRef.current) {
+          const hqTex = textureGeneratorRef.current.render(mockupRef.current);
+          activeMaterialsRef.current.forEach((mat) => {
+            mat.map = hqTex;
           });
         }
 
-        const originalSize = new THREE.Vector2();
-        renderer.getSize(originalSize);
-        const originalAspect = camera.aspect;
-        const originalClearAlpha = renderer.getClearAlpha();
-
-        // Calculate aspect ratio dimensions (standard high-res base)
-        let baseW = 3840;
-        let baseH = 2160;
-        if (ratio === '16:9') {
-          baseW = 3840;
-          baseH = 2160;
-        } else if (ratio === '1:1') {
-          baseW = 2800;
-          baseH = 2800;
-        } else if (ratio === '9:16') {
-          baseW = 2160;
-          baseH = 3840;
-        } else if (ratio === '4:5') {
-          baseW = 2160;
-          baseH = 2700;
-        }
-
-        const targetW = Math.round((baseW * qualityMultiplier) / 2);
-        const targetH = Math.round((baseH * qualityMultiplier) / 2);
-
-        renderer.setSize(targetW, targetH, false);
-        camera.aspect = targetW / targetH;
-        camera.updateProjectionMatrix();
-
-        renderer.setClearAlpha(0);
-        renderer.render(scene, camera);
-
-        // Composite onto high-res 2D canvas with current live background
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = targetW;
-        exportCanvas.height = targetH;
-        const ctx = exportCanvas.getContext('2d');
-        if (!ctx) {
-          throw new Error('Canvas 2D context unavailable');
-        }
-
-        drawBackgroundOnCanvas(ctx, targetW, targetH, bgImg, transparent && format === 'png');
-        ctx.drawImage(renderer.domElement, 0, 0, targetW, targetH);
-
-        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-        const dataUrl = exportCanvas.toDataURL(mimeType, 0.95);
-
-        // Restore original render state
-        renderer.setSize(originalSize.x, originalSize.y, true);
-        camera.aspect = originalAspect;
-        camera.updateProjectionMatrix();
-        renderer.setClearAlpha(originalClearAlpha);
-        renderer.render(scene, camera);
-
-        return dataUrl;
+        return await renderHighResImage({
+          modelGroup: model,
+          background,
+          lighting,
+          cameraSettings,
+          sceneSettings,
+          format,
+          ratio,
+          transparent,
+          qualityMultiplier,
+        });
       },
 
       recordTurntableVideo: async (
-        _fps: number,
+        fps: number,
         durationSec: number,
         format: 'webm' | 'mp4',
         ratio: '16:9' | '1:1' | '9:16' | '4:5',
         transparent: boolean,
         onProgress: (p: number) => void
       ): Promise<Blob> => {
-        const scene = sceneRef.current;
-        const camera = cameraRef.current;
-        const renderer = rendererRef.current;
         const model = modelGroupRef.current;
-        const controls = controlsRef.current;
-        if (!scene || !camera || !renderer || !model) {
-          throw new Error('Canvas not ready for recording');
+        if (!model) {
+          throw new Error('Model not ready for recording');
         }
 
-        // Follow requested FPS from app settings or passed param (24, 30, 60)
-        const targetFps = _fps || animationRef.current.fps || 60;
-        const totalFrames = Math.max(targetFps, Math.round(durationSec * targetFps));
-        const frameIntervalMs = 1000 / targetFps;
-
-        // Tell the background animation loop to stop rendering while we record
-        isRecordingRef.current = true;
-
-        // Preload custom background image if applicable
-        let bgImg: HTMLImageElement | null = null;
-        if (!transparent && background.type === 'image' && background.imageUrl) {
-          bgImg = new Image();
-          bgImg.crossOrigin = 'anonymous';
-          bgImg.src = background.imageUrl;
-          await new Promise((resolve) => {
-            if (!bgImg) return resolve(null);
-            if (bgImg.complete) return resolve(null);
-            bgImg.onload = () => resolve(null);
-            bgImg.onerror = () => resolve(null);
+        // Ensure 4096px HQ texture is baked before recording
+        if (liveHqTimeoutRef.current !== null) {
+          clearTimeout(liveHqTimeoutRef.current);
+          liveHqTimeoutRef.current = null;
+        }
+        if (textureGeneratorRef.current) {
+          const hqTex = textureGeneratorRef.current.render(mockupRef.current);
+          activeMaterialsRef.current.forEach((mat) => {
+            mat.map = hqTex;
           });
         }
 
-        // 1. Save original viewport state to restore cleanly after export
-        const originalSize = new THREE.Vector2();
-        renderer.getSize(originalSize);
-        const originalAspect = camera.aspect;
-        const originalFov = camera.fov;
-        const originalClearAlpha = renderer.getClearAlpha();
-        const originalCamPos = camera.position.clone();
-        const originalCamRot = camera.rotation.clone();
-        const originalControlsTarget = controls ? controls.target.clone() : new THREE.Vector3(0, 0, 0);
-        const originalModelRot = { x: model.rotation.x, y: model.rotation.y, z: model.rotation.z };
-        const originalModelPos = { x: model.position.x, y: model.position.y, z: model.position.z };
-
-        // 2. Video resolutions matching selected ratio (crisp 1080p standards)
-        let recW = 1920;
-        let recH = 1080;
-        if (ratio === '16:9') {
-          recW = 1920;
-          recH = 1080;
-        } else if (ratio === '1:1') {
-          recW = 1080;
-          recH = 1080;
-        } else if (ratio === '9:16') {
-          recW = 1080;
-          recH = 1920;
-        } else if (ratio === '4:5') {
-          recW = 1080;
-          recH = 1350;
-        }
-
-        renderer.setSize(recW, recH, false);
-        camera.aspect = recW / recH;
-        camera.fov = 40;
-        camera.updateProjectionMatrix();
-        renderer.setClearAlpha(0);
-
-        // 3. Setup FRONT angle for camera and model so turntable starts directly from front
-        const dist = 3.4;
-        camera.position.set(0, 0, dist);
-        if (controls) {
-          controls.target.set(0, 0, 0);
-          controls.update();
-        }
-        camera.lookAt(0, 0, 0);
-        model.position.set(0, 0.05, 0);
-        model.rotation.set(0, 0, 0); // 0 rad = directly facing front
-
-        // 4. Pre-render background ONCE to save CPU/GPU cycles during 60fps recording
-        const cachedBgCanvas = document.createElement('canvas');
-        cachedBgCanvas.width = recW;
-        cachedBgCanvas.height = recH;
-        const bgCtx = cachedBgCanvas.getContext('2d');
-        if (bgCtx) {
-          if (transparent && format === 'webm') {
-            bgCtx.clearRect(0, 0, recW, recH);
-          } else {
-            drawBackgroundOnCanvas(bgCtx, recW, recH, bgImg, false);
-          }
-        }
-
-        // 5. Create recording canvas
-        const recCanvas = document.createElement('canvas');
-        recCanvas.width = recW;
-        recCanvas.height = recH;
-        const recCtx = recCanvas.getContext('2d');
-        if (!recCtx) {
-          isRecordingRef.current = false;
-          throw new Error('Record canvas context not available');
-        }
-
-        // Draw initial front-angle frame
-        if (transparent && format === 'webm') {
-          recCtx.clearRect(0, 0, recW, recH);
-        } else if (bgCtx) {
-          recCtx.drawImage(cachedBgCanvas, 0, 0);
-        }
-        renderer.render(scene, camera);
-        recCtx.drawImage(renderer.domElement, 0, 0, recW, recH);
-
-        // 6. Setup MediaRecorder at 60 FPS with high bitrate for pristine quality
-        const stream = recCanvas.captureStream(targetFps);
-        const track = stream.getVideoTracks()[0] as any;
-
-        let mimeType = 'video/webm;codecs=vp9';
-        if (format === 'mp4' && MediaRecorder.isTypeSupported('video/mp4')) {
-          mimeType = 'video/mp4';
-        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-          mimeType = 'video/webm;codecs=vp9';
-        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-          mimeType = 'video/webm;codecs=vp8';
-        } else {
-          mimeType = 'video/webm';
-        }
-
-        const recorder = new MediaRecorder(stream, {
-          mimeType,
-          videoBitsPerSecond: 16000000, // 16 Mbps for crisp 60fps
+        return await renderTurntableVideo({
+          modelGroup: model,
+          background,
+          lighting,
+          cameraSettings,
+          sceneSettings,
+          animation: animationRef.current,
+          fps,
+          durationSec,
+          format,
+          ratio,
+          transparent,
+          onProgress,
         });
+      },
 
-        const chunks: Blob[] = [];
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        };
+      exportGLB: async (): Promise<Blob> => {
+        const model = modelGroupRef.current;
+        const gen = textureGeneratorRef.current;
+        if (!model || !gen) {
+          throw new Error('3D model or texture canvas not available');
+        }
 
-        const restoreViewportState = () => {
-          renderer.setSize(originalSize.x, originalSize.y, true);
-          camera.aspect = originalAspect;
-          camera.fov = originalFov;
-          camera.position.copy(originalCamPos);
-          camera.rotation.copy(originalCamRot);
-          camera.updateProjectionMatrix();
-          if (controls) {
-            controls.target.copy(originalControlsTarget);
-            controls.update();
-          }
-          model.position.set(originalModelPos.x, originalModelPos.y, originalModelPos.z);
-          model.rotation.set(originalModelRot.x, originalModelRot.y, originalModelRot.z);
-          renderer.setClearAlpha(originalClearAlpha);
-          renderer.render(scene, camera);
-          isRecordingRef.current = false;
-        };
+        // Ensure 4096px HQ texture is baked before exporting GLB
+        if (liveHqTimeoutRef.current !== null) {
+          clearTimeout(liveHqTimeoutRef.current);
+          liveHqTimeoutRef.current = null;
+        }
+        gen.render(mockupRef.current);
 
-        return new Promise<Blob>((resolve, reject) => {
-          recorder.onstop = () => {
-            restoreViewportState();
-            const blob = new Blob(chunks, { type: mimeType });
-            resolve(blob);
-          };
-
-          recorder.onerror = (e) => {
-            restoreViewportState();
-            reject(e);
-          };
-
-          recorder.start();
-
-          // Wait 50ms for recorder to initialize
-          setTimeout(() => {
-            let currentFrame = 0;
-            const startTime = performance.now();
-
-            const renderNextFrame = () => {
-              if (currentFrame >= totalFrames) {
-                // Done rendering all frames! Small 50ms buffer to finalize last packet
-                setTimeout(() => {
-                  if (recorder.state === 'recording') {
-                    recorder.stop();
-                  }
-                }, 50);
-                return;
-              }
-
-              const progressRatio = currentFrame / totalFrames;
-              onProgress(Math.min(99, Math.round(progressRatio * 100)));
-
-              // Calculate angle using the configured easing curve
-              const easedProgress = calculateEasedProgress(
-                progressRatio,
-                animationRef.current.easing
-              );
-              const angle = easedProgress * Math.PI * 2;
-              model.rotation.y = angle;
-              renderer.render(scene, camera);
-
-              // Composite to record canvas
-              if (transparent && format === 'webm') {
-                recCtx.clearRect(0, 0, recW, recH);
-              } else if (bgCtx) {
-                recCtx.drawImage(cachedBgCanvas, 0, 0);
-              }
-              recCtx.drawImage(renderer.domElement, 0, 0, recW, recH);
-
-              currentFrame++;
-
-              // Precise timing calculation to keep recording completely stutter-free
-              const targetTime = startTime + currentFrame * frameIntervalMs;
-              const now = performance.now();
-              const delay = Math.max(0, targetTime - now);
-
-              setTimeout(renderNextFrame, delay);
-            };
-
-            renderNextFrame();
-          }, 50);
+        return await exportCustomizedGLB({
+          modelGroup: model,
+          textureCanvas: gen.getCanvas(),
+          mockup: mockupRef.current,
         });
       },
     }));

@@ -69,6 +69,9 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
     );
     layersRef.current = nextLayers;
     onChangeMockup({ layers: nextLayers });
+    if (onLiveUpdateLayers) {
+      onLiveUpdateLayers(nextLayers);
+    }
   };
 
   // Handle Layer Drag / Resize start
@@ -288,7 +291,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         {/* Floating Guide toggle in top-right corner of canvas */}
         <button
           onClick={() => setShowGuide(!showGuide)}
-          className="absolute top-3 right-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#181818]/80 backdrop-blur-xs border border-[#3A3A3A] text-xs text-white hover:bg-[#222222] transition-colors shadow-sm cursor-pointer"
+          className="absolute top-3 right-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#181818]/90 backdrop-blur-xs border border-[#3A3A3A] hover:border-white/50 text-xs text-white hover:bg-[#242424] active:scale-95 transition-all duration-150 shadow-sm cursor-pointer"
           title={showGuide ? 'Hide UV layout guide' : 'Show UV layout guide'}
         >
           {showGuide ? (
@@ -354,28 +357,28 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-125 transition-transform"
+                    className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'ne', layer.id)}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-125 transition-transform"
+                    className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'se', layer.id)}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-125 transition-transform"
+                    className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nwse-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDown(e, 'sw', layer.id)}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
                     style={{ width: 'calc(var(--spacing) * 1.5)', height: 'calc(var(--spacing) * 1.5)' }}
-                    className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-125 transition-transform"
+                    className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-white border border-black/30 pointer-events-auto cursor-nesw-resize shadow-xs hover:scale-135 active:scale-110 transition-transform duration-150"
                   />
 
                   {/* Top rotation stem & handle */}
@@ -384,7 +387,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                     onPointerDown={(e) => handlePointerDown(e, 'rotate', layer.id)}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
-                    className="absolute -top-6.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border border-black/30 pointer-events-auto cursor-grab active:cursor-grabbing shadow-md hover:scale-125 transition-transform"
+                    className="absolute -top-6.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border border-black/30 pointer-events-auto cursor-grab active:cursor-grabbing shadow-md hover:scale-135 active:scale-110 transition-transform duration-150"
                     title="Drag to rotate design"
                   />
                 </div>
@@ -408,9 +411,9 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         {/* Fit Design Button */}
         <button
           onClick={handleFitDesign}
-          className="py-2.5 px-3 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#262626] hover:border-[#404040] text-[#ECECEC] text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+          className="py-2.5 px-3 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#262626] hover:border-[#444444] text-[#ECECEC] hover:text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 active:scale-98 cursor-pointer shadow-xs hover:shadow-sm group"
         >
-          <Maximize2 className="w-3.5 h-3.5 text-[#A3A3A3]" />
+          <Maximize2 className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors duration-150" />
           <span>Fit Design</span>
         </button>
       </div>
@@ -419,9 +422,9 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
       <div>
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full py-2.5 px-4 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#262626] hover:border-[#404040] text-[#ECECEC] text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+          className="w-full py-2.5 px-4 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#262626] hover:border-[#444444] text-[#ECECEC] hover:text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 active:scale-98 cursor-pointer shadow-xs hover:shadow-sm group"
         >
-          <Upload className="w-3.5 h-3.5 text-[#A3A3A3]" />
+          <Upload className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white group-hover:-translate-y-0.5 transition-all duration-150" />
           <span>Upload Design</span>
         </button>
         <input
@@ -451,13 +454,13 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
         {mockup.layers.map((layer, index) => {
           const isActive = layer.id === (activeLayer?.id || '');
           return (
-            <div key={layer.id} className="space-y-3">
+            <div key={layer.id} className="space-y-2">
               <div
                 onClick={() => onChangeMockup({ activeLayerId: layer.id })}
-                className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all ${
+                className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer select-none transition-all duration-150 active:scale-[0.99] ${
                   isActive
-                    ? 'bg-[#181818] border-[#383838]'
-                    : 'bg-[#141414] border-[#262626] hover:bg-[#181818]'
+                    ? 'bg-[#181818] border-[#383838] shadow-xs'
+                    : 'bg-[#141414] border-[#262626] hover:bg-[#1A1A1A] hover:border-[#383838]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
@@ -478,13 +481,13 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
 
                 {/* Actions: Move Up, Move Down, Delete */}
                 <div
-                  className="flex items-center gap-2 text-[#737373]"
+                  className="flex items-center gap-1.5 text-[#737373]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     disabled={index === 0}
                     onClick={() => moveLayer(index, 'up')}
-                    className="hover:text-white disabled:opacity-20 transition-colors p-0.5 cursor-pointer"
+                    className="hover:text-white hover:bg-[#262626] rounded p-1 disabled:opacity-20 transition-all duration-150 cursor-pointer active:scale-90"
                     title="Move up"
                   >
                     <ChevronUp className="w-4 h-4" />
@@ -493,7 +496,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
                   <button
                     disabled={index === mockup.layers.length - 1}
                     onClick={() => moveLayer(index, 'down')}
-                    className="hover:text-white disabled:opacity-20 transition-colors p-0.5 cursor-pointer"
+                    className="hover:text-white hover:bg-[#262626] rounded p-1 disabled:opacity-20 transition-all duration-150 cursor-pointer active:scale-90"
                     title="Move down"
                   >
                     <ChevronDown className="w-4 h-4" />
@@ -501,7 +504,7 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
 
                   <button
                     onClick={() => handleDeleteLayer(layer.id)}
-                    className="hover:text-[#EF4444] transition-colors p-0.5 cursor-pointer"
+                    className="hover:text-[#EF4444] hover:bg-[#2A1515] rounded p-1 transition-all duration-150 cursor-pointer active:scale-90"
                     title="Delete layer"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -511,38 +514,50 @@ export const InteractiveUVCanvas: React.FC<InteractiveUVCanvasProps> = ({
 
               {/* Row 5: Two sleek horizontal sliders */}
               {isActive && (
-                <div className="space-y-3 px-0.5">
+                <div className="space-y-2.5 px-0.5 pt-1 animate-accordion-reveal">
                   {/* Slider 1: Scale / Size preserving aspect ratio */}
-                  <input
-                    type="range"
-                    min={0.05}
-                    max={1.0}
-                    step={0.01}
-                    value={layer.width}
-                    onChange={(e) => {
-                      const newW = parseFloat(e.target.value);
-                      const aspect = (layer.aspectRatio && layer.aspectRatio > 0)
-                        ? layer.aspectRatio
-                        : (layer.width / (layer.height || 1)) || 1;
-                      updateLayer(layer.id, { width: newW, height: newW / aspect });
-                    }}
-                    className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white block"
-                    title="Scale"
-                  />
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[10px] text-[#888888]">
+                      <span>Scale</span>
+                      <span className="font-mono">{Math.round(layer.width * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.05}
+                      max={1.0}
+                      step={0.01}
+                      value={layer.width}
+                      onChange={(e) => {
+                        const newW = parseFloat(e.target.value);
+                        const aspect = (layer.aspectRatio && layer.aspectRatio > 0)
+                          ? layer.aspectRatio
+                          : (layer.width / (layer.height || 1)) || 1;
+                        updateLayer(layer.id, { width: newW, height: newW / aspect });
+                      }}
+                      className="w-full h-1 bg-[#262626] hover:bg-[#303030] rounded appearance-none cursor-ew-resize active:cursor-grabbing accent-white block transition-colors duration-150"
+                      title="Scale"
+                    />
+                  </div>
 
                   {/* Slider 2: Opacity */}
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={layer.opacity ?? 1}
-                    onChange={(e) =>
-                      updateLayer(layer.id, { opacity: parseFloat(e.target.value) })
-                    }
-                    className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white block"
-                    title="Opacity"
-                  />
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[10px] text-[#888888]">
+                      <span>Opacity</span>
+                      <span className="font-mono">{Math.round((layer.opacity ?? 1) * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={layer.opacity ?? 1}
+                      onChange={(e) =>
+                        updateLayer(layer.id, { opacity: parseFloat(e.target.value) })
+                      }
+                      className="w-full h-1 bg-[#262626] hover:bg-[#303030] rounded appearance-none cursor-ew-resize active:cursor-grabbing accent-white block transition-colors duration-150"
+                      title="Opacity"
+                    />
+                  </div>
                 </div>
               )}
             </div>

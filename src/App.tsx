@@ -282,10 +282,30 @@ export default function App() {
     }
   };
 
-  // Download official 3D GLB model directly for the currently selected model
+  // Download customized 3D GLB model with embedded 4K PBR textures
   const handleDownloadGLB = async () => {
-    const targetUrl = currentModel.modelUrl;
+    if (!isPro) {
+      handleRequirePro('Fitur Export 3D Model GLB khusus Pro Plan');
+      return;
+    }
+
     try {
+      if (viewportRef.current?.exportGLB) {
+        const blob = await viewportRef.current.exportGLB();
+        const blobUrl = URL.createObjectURL(blob);
+        const filename = generateExportFileName(currentModel.name, 'glb');
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        return;
+      }
+
+      // Fallback to official template GLB if viewport not available
+      const targetUrl = currentModel.modelUrl;
       const response = await fetch(targetUrl);
       if (!response.ok) throw new Error('Fetch failed');
       const blob = await response.blob();
@@ -299,7 +319,7 @@ export default function App() {
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch {
       const a = document.createElement('a');
-      a.href = targetUrl;
+      a.href = currentModel.modelUrl;
       a.download = `${currentModel.name.replace(/\s+/g, '_')}.glb`;
       a.target = '_blank';
       document.body.appendChild(a);
